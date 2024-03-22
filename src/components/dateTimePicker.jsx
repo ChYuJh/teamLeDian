@@ -106,8 +106,8 @@ class DateTimePicker extends Component {
               return (
                 //店休呈現灰色無法點擊
                 <div
-                  class="react-datepicker__day react-datepicker__day--017 react-datepicker__day--disabled react-datepicker__day--weekend"
-                  tabindex="-1"
+                  className="react-datepicker__day react-datepicker__day--017 react-datepicker__day--disabled react-datepicker__day--weekend"
+                  tabIndex="-1"
                   aria-label="Not available Sunday, March 17th, 2024"
                   role="option"
                   title=""

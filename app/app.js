@@ -663,73 +663,189 @@ app.get("/region/:cityId", function (req, res) {
 });
 
 app.get("/cartlist", function (req, res) {
-  // let carts = [
-  //   {
-  //     cart_id: 1,
-  //     user_id: 1,
-  //     brand_id: 1,
-  //     brand_name: "迷客夏",
-  //     banch_id: 1,
-  //     branch_name: "臺中世貿店",
-  //     branch_address: "台中市大里區成功路462號",
-  //     total_item: 4,
-  //     total_item_price: 145,
-  //     updatetime: new Date(),
-  //     createtime: new Date(),
-  //   },
-  //   {
-  //     cart_id: 2,
-  //     user_id: 1,
-  //     brand_id: 2,
-  //     brand_name: "得正",
-  //     banch_id: 50,
-  //     branch_name: "台中神岡計劃",
-  //     branch_address: "台中市神岡區中山路480號",
-  //     total_item: 10,
-  //     total_item_price: 500,
-  //     updatetime: new Date(),
-  //     createtime: new Date(),
-  //   },
-  //   {
-  //     cart_id: 3,
-  //     user_id: 1,
-  //     brand_id: 3,
-  //     brand_name: "烏弄",
-  //     banch_id: 87,
-  //     branch_name: "大里益民店",
-  //     branch_address: "台中市大里區中興路二段169之2號",
-  //     total_item: 6,
-  //     total_item_price: 360,
-  //     updatetime: new Date(),
-  //     createtime: new Date(),
-  //   },
-  // ];
-  // conn.query(
-  //   "SELECT branch.brand_id, branch.branch_name,branch.branch_address,carts.cart_id,carts.total_item,carts.total_item_price,brand.brand_name FROM branch left join carts on branch.branch_id = carts.banch_id left join brand on branch.brand_id = brand.brand_id  WHERE carts.user_id=1",
-  //   [],
-  //   (err, rows) => {
-  //     if (err) {
-  //       console.log(err);
-  //     }
-  //     res.send(JSON.stringify(rows));
-  //   }
-  // );
-  // res.send(JSON.stringify(carts));
+  conn.query(
+    "SELECT  *,  SUM(cartdetails.item_quantity) as total_item ,  SUM(cartdetails.total_price) as total_item_price FROM branch LEFT join  cartdetails ON branch.branch_id=cartdetails.branch_id LEFT join brand on cartdetails.brand_id=brand.brand_id  WHERE user_id=1   GROUP BY cart_id ",
+    [],
+    (err, rows) => {
+      if (err) {
+        console.log(err);
+      }
+      res.send(JSON.stringify(rows));
+    }
+  );
 });
 
 //購物車明細
 app.get("/cartPay/:id", function (req, res) {
-  // console.log(req.params.id);
-  // conn.query(
-  //   `SELECT item_quantity, item_id,product_id,item_img,item_name,item_sugar,item_temperatures,item_ingredient,ingredient_price,total_price, branch.branch_address,branch.branch_phone,branch.branch_name,brand.brand_name FROM branch left join carts on branch.branch_id = carts.banch_id left join cartdetails on carts.cart_id=cartdetails.cart_id left join brand on branch.brand_id = brand.brand_id  WHERE carts.cart_id=?`,
-  //   [req.params.id],
-  //   function (err, rows) {
-  //     res.send(JSON.stringify(rows));
-  //   }
-  // );
+  console.log(req.params.id);
+  conn.query(
+    " SELECT * FROM cartdetails LEFT join branch on cartdetails.branch_id=branch.branch_id left join brand on brand.brand_id=cartdetails.brand_id  WHERE cart_id=?",
+    [req.params.id],
+    function (err, rows) {
+      res.send(JSON.stringify(rows));
+    }
+  );
 });
 
-//時間
+//商品編輯
+app.get("/itemedit/:id", function (req, res) {
+  console.log(req.params.id);
+  conn.query(
+    `SELECT * FROM products LEFT join cartdetails on products.product_id=cartdetails.product_id LEFT join branch on branch.branch_id =cartdetails.branch_id LEFT join brand on brand.brand_id=cartdetails.brand_id LEFT JOIN sizes on sizes.brand_id = brand.brand_id LEFT join temperatures on temperatures.brand_id = brand.brand_id LEFT JOIN ingredients on ingredients.brand_id=brand.brand_id LEFT join sugars on sugars.brand_id=brand.brand_id WHERE cartdetails.item_id=?;`,
+    [req.params.id],
+    function (err, rows) {
+      let newdata = [
+        {
+          size_choose: [
+            {
+              size: rows[0].choose_size_0 ? rows[0].size_0_name : "",
+              temperatures: rows[0].choose_size_0,
+            },
+            {
+              size: rows[0].choose_size_1 ? rows[0].size_1_name : "",
+              temperatures: rows[0].choose_size_1,
+            },
+            {
+              size: rows[0].choose_size_2 ? rows[0].size_1_name : "",
+              temperatures: rows[0].choose_size_2,
+            },
+          ],
+        },
+        {
+          temperature_choose: [
+            rows[0].temperature_0,
+            rows[0].temperature_1,
+            rows[0].temperature_2,
+            rows[0].temperature_3,
+            rows[0].temperature_4,
+            rows[0].temperature_5,
+            rows[0].temperature_6,
+            rows[0].temperature_7,
+          ],
+        },
+        {
+          sugar_choose: [
+            rows[0].sugar_0,
+            rows[0].sugar_1,
+            rows[0].sugar_2,
+            rows[0].sugar_3,
+            rows[0].sugar_4,
+            rows[0].sugar_5,
+            rows[0].sugar_6,
+            rows[0].sugar_7,
+            rows[0].sugar_8,
+            rows[0].sugar_9,
+          ],
+        },
+
+        {
+          ingredient: [
+            {
+              ingredient_choose: rows[0].ingredient_0,
+              ingredient_price: rows[0].ingredient_price_0,
+            },
+            {
+              ingredient_choose: rows[0].ingredient_1,
+              ingredient_price: rows[0].ingredient_price_1,
+            },
+            {
+              ingredient_choose: rows[0].ingredient_2,
+              ingredient_price: rows[0].ingredient_price_2,
+            },
+            {
+              ingredient_choose: rows[0].ingredient_3,
+              ingredient_price: rows[0].ingredient_price_3,
+            },
+            {
+              ingredient_choose: rows[0].ingredient_4,
+              ingredient_price: rows[0].ingredient_price_4,
+            },
+            {
+              ingredient_choose: rows[0].ingredient_5,
+              ingredient_price: rows[0].ingredient_price_5,
+            },
+            {
+              ingredient_choose: rows[0].ingredient_6,
+              ingredient_price: rows[0].ingredient_price_6,
+            },
+            {
+              ingredient_choose: rows[0].ingredient_7,
+              ingredient_price: rows[0].ingredient_price_7,
+            },
+            {
+              ingredient_choose: rows[0].ingredient_8,
+              ingredient_price: rows[0].ingredient_price_8,
+            },
+            {
+              ingredient_choose: rows[0].ingredient_9,
+              ingredient_price: rows[0].ingredient_price_9,
+            },
+            {
+              ingredient_choose: rows[0].ingredient_10,
+              ingredient_price: rows[0].ingredient_price_10,
+            },
+            {
+              ingredient_choose: rows[0].ingredient_11,
+              ingredient_price: rows[0].ingredient_price_11,
+            },
+          ],
+        },
+
+        {
+          ingredient_price: [
+            rows[0].ingredient_price_0,
+            rows[0].ingredient_price_2,
+            rows[0].ingredient_price_3,
+            rows[0].ingredient_price_4,
+            rows[0].ingredient_price_5,
+            rows[0].ingredient_price_6,
+            rows[0].ingredient_price_7,
+            rows[0].ingredient_price_8,
+            rows[0].ingredient_price_9,
+            rows[0].ingredient_price_1,
+            rows[0].ingredient_price_1,
+          ],
+        },
+        { brand_note: rows[0].brand_note },
+        {
+          branch_name: rows[0].branch_name,
+          branch_address: rows[0].branch_address,
+          branch_phone: rows[0].branch_phone,
+        },
+        {
+          product: {
+            product_name: rows[0].product_name,
+            product_img: rows[0].product_img,
+            // choose_size_0: 0,
+            // choose_size_1: 3,
+            // choose_size_2: 0,
+            choose_sugar: 6, //rows[0].choose_sugar
+            choose_ingredient: rows[0].choose_ingredient,
+            products_price_0: rows[0].products_price_0,
+            products_price_1: rows[0].products_price_1,
+            products_price_2: rows[0].products_price_2,
+          },
+        },
+        {
+          cats_item: {
+            item_size: rows[0].item_size,
+            item_sugar: rows[0].item_sugar,
+            item_temperatures: rows[0].item_temperatures,
+            item_price: rows[0].item_price,
+            item_ingredient: rows[0].item_ingredient,
+            ingredient_price: rows[0].ingredient_price,
+            item_quantity: rows[0].item_quantity,
+            total_price: rows[0].total_price,
+          },
+        },
+      ];
+      console.log(newdata);
+      res.send(JSON.stringify(newdata));
+    }
+  );
+});
+
+//營業時間
 app.get("/branchinfo", function (req, res) {
   conn.query(
     "SELECT * FROM `branch` WHERE branch_id = 546;",
@@ -752,8 +868,11 @@ app.post("/cartPay", function (req, res) {
     orders_bag: req.body.orders_bag,
     terms_of_payment: req.body.terms_of_payment,
     invoicing_method: req.body.invoicing_method,
+    orders_bag_num: req.body.orders_bag_num,
+    usePoninter: req.body.usePoninter,
     orders_status: req.body.orders_status,
     payment_status: req.body.payment_status,
+    orders_pick_up: req.body.orders_pick_up,
     updatetime: req.body.updatetime,
     createtime: req.body.createtime,
   };
@@ -761,202 +880,61 @@ app.post("/cartPay", function (req, res) {
   const orderDetails = req.body.details;
   let neworderDetails;
 
-  // conn.query(
-  //   "INSERT INTO orders (user_id, branch_id, orders_total, orders_bag, terms_of_payment, invoicing_method, orders_status, payment_status, updatetime, createtime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-  //   [
-  //     orderInfo.user_id,
-  //     orderInfo.branch_id,
-  //     orderInfo.orders_total,
-  //     orderInfo.orders_bag,
-  //     orderInfo.terms_of_payment,
-  //     orderInfo.invoicing_method,
-  //     orderInfo.orders_status,
-  //     orderInfo.payment_status,
-  //     orderInfo.updatetime,
-  //     orderInfo.createtime,
-  //   ],
-  //   (err, results) => {
-  //     if (err) {
-  //       res.send(JSON.stringify(err));
-  //     } else {
-  //       console.log("Inserted successfully.");
-  //       console.log("Results:", results);
+  conn.query(
+    "INSERT INTO orders (user_id, branch_id, orders_total, orders_bag, terms_of_payment, invoicing_method, orders_bag_num,usePoninter,orders_status, payment_status, orders_pick_up,updatetime, createtime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?,?,?)",
+    [
+      orderInfo.user_id,
+      orderInfo.branch_id,
+      orderInfo.orders_total,
+      orderInfo.orders_bag,
+      orderInfo.terms_of_payment,
+      orderInfo.invoicing_method,
+      orderInfo.orders_bag_num,
+      orderInfo.usePoninter,
+      orderInfo.orders_status,
+      orderInfo.payment_status,
+      orderInfo.orders_pick_up,
+      orderInfo.updatetime,
+      orderInfo.createtime,
+    ],
+    (err, results) => {
+      if (err) {
+        res.send(JSON.stringify(err));
+      } else {
+        console.log("Inserted successfully.");
+        console.log("Results:", results);
 
-  //       const orders_id = results.insertId;
-  //       neworderDetails = orderDetails.map((item) => {
-  //         item.orders_id = orders_id;
-  //         return [
-  //           item.orders_id,
-  //           item.details_name,
-  //           item.details_size,
-  //           item.details_sugar,
-  //           item.details_mperatures,
-  //           item.details_ingredient,
-  //           item.details_amount,
-  //           item.details_quantity,
-  //           item.details_total,
-  //           item.updatetime,
-  //           item.createtime,
-  //         ];
-  //       });
+        const orders_id = results.insertId;
+        neworderDetails = orderDetails.map((item) => {
+          item.orders_id = orders_id;
+          return [
+            item.orders_id,
+            item.details_name,
+            item.details_size,
+            item.details_sugar,
+            item.details_mperatures,
+            item.details_ingredient,
+            item.details_amount,
+            item.details_quantity,
+            item.details_total,
+            item.updatetime,
+            item.createtime,
+          ];
+        });
 
-  //       console.log(neworderDetails);
-  //       conn.query(
-  //         "INSERT INTO order_details (orders_id, details_name, details_size, details_sugar, details_mperatures, details_ingredient, details_amount, details_quantity, details_total, updatetime, createtime) VALUES  ?",
-  //         [neworderDetails],
-  //         (err) => {
-  //           if (err) {
-  //             console.log(JSON.stringify(err));
-  //           } else {
-  //             console.log("成功寫入訂單資訊、明細");
-  //           }
-  //         }
-  //       );
-  //     }
-  //   }
-  // );
-});
-
-//對話框商品修改
-app.get("/test", function (req, res) {
-  // conn.query(
-  //   `SELECT * FROM sugars where brand_id=1 `,
-  //   [],
-  //   function (err, rows) {
-  //     res.send(JSON.stringify(rows));
-  //   }
-  // );
-  // conn.query(
-  //   `SELECT * FROM sizes INNER JOIN brand ON sizes.brand_id=brand.brand_id
-  //   INNER join temperatures on temperatures.brand_id=brand.brand_id INNER JOIN ingredients on ingredients.brand_id=brand.brand_id INNER join sugars on sugars.brand_id=brand.brand_id RIGHT join products on products.brand_id = brand.brand_id
-  //   WHERE products.product_id=1`,
-  //   [],
-  //   function (err, rows) {
-  //     let newdata = [
-  //       {
-  //         size_choose: [
-  //           rows[0].size_0_name,
-  //           rows[0].size_1_name,
-  //           rows[0].size_2_name,
-  //         ],
-  //       },
-  //       {
-  //         temperature_choose: [
-  //           rows[0].temperature_0,
-  //           rows[0].temperature_1,
-  //           rows[0].temperature_2,
-  //           rows[0].temperature_3,
-  //           rows[0].temperature_4,
-  //           rows[0].temperature_5,
-  //           rows[0].temperature_6,
-  //           rows[0].temperature_7,
-  //         ],
-  //       },
-  //       {
-  //         sugar_choose: [
-  //           rows[0].sugar_0,
-  //           rows[0].sugar_1,
-  //           rows[0].sugar_2,
-  //           rows[0].sugar_3,
-  //           rows[0].sugar_4,
-  //           rows[0].sugar_5,
-  //           rows[0].sugar_6,
-  //           rows[0].sugar_7,
-  //           rows[0].sugar_8,
-  //           rows[0].sugar_9,
-  //         ],
-  //       },
-  //       // {
-  //       //   ingredient_choose: [
-  //       //     rows[0].ingredient_0,
-  //       //     rows[0].ingredient_1,
-  //       //     rows[0].ingredient_2,
-  //       //     rows[0].ingredient_3,
-  //       //     rows[0].ingredient_4,
-  //       //     rows[0].ingredient_5,
-  //       //     rows[0].ingredient_6,
-  //       //     rows[0].ingredient_7,
-  //       //     rows[0].ingredient_8,
-  //       //     rows[0].ingredient_9,
-  //       //     rows[0].ingredient_10,
-  //       //     rows[0].ingredient_11,
-  //       //   ],
-  //       // },
-  //       {
-  //         ingredient: [
-  //           {
-  //             ingredient_choose: rows[0].ingredient_0,
-  //             ingredient_price: rows[0].ingredient_price_0,
-  //           },
-  //           {
-  //             ingredient_choose: rows[0].ingredient_1,
-  //             ingredient_price: rows[0].ingredient_price_1,
-  //           },
-  //           {
-  //             ingredient_choose: rows[0].ingredient_2,
-  //             ingredient_price: rows[0].ingredient_price_2,
-  //           },
-  //           {
-  //             ingredient_choose: rows[0].ingredient_3,
-  //             ingredient_price: rows[0].ingredient_price_3,
-  //           },
-  //           {
-  //             ingredient_choose: rows[0].ingredient_4,
-  //             ingredient_price: rows[0].ingredient_price_4,
-  //           },
-  //           {
-  //             ingredient_choose: rows[0].ingredient_5,
-  //             ingredient_price: rows[0].ingredient_price_5,
-  //           },
-  //           {
-  //             ingredient_choose: rows[0].ingredient_6,
-  //             ingredient_price: rows[0].ingredient_price_6,
-  //           },
-  //           {
-  //             ingredient_choose: rows[0].ingredient_7,
-  //             ingredient_price: rows[0].ingredient_price_7,
-  //           },
-  //           {
-  //             ingredient_choose: rows[0].ingredient_8,
-  //             ingredient_price: rows[0].ingredient_price_8,
-  //           },
-  //           {
-  //             ingredient_choose: rows[0].ingredient_9,
-  //             ingredient_price: rows[0].ingredient_price_9,
-  //           },
-  //           {
-  //             ingredient_choose: rows[0].ingredient_10,
-  //             ingredient_price: rows[0].ingredient_price_10,
-  //           },
-  //           {
-  //             ingredient_choose: rows[0].ingredient_11,
-  //             ingredient_price: rows[0].ingredient_price_11,
-  //           },
-  //         ],
-  //       },
-  //       // {
-  //       //   ingredient_price: [
-  //       //     rows[0].ingredient_price_0,
-  //       //     rows[0].ingredient_price_2,
-  //       //     rows[0].ingredient_price_3,
-  //       //     rows[0].ingredient_price_4,
-  //       //     rows[0].ingredient_price_5,
-  //       //     rows[0].ingredient_price_6,
-  //       //     rows[0].ingredient_price_7,
-  //       //     rows[0].ingredient_price_8,
-  //       //     rows[0].ingredient_price_9,
-  //       //     rows[0].ingredient_price_1,
-  //       //     rows[0].ingredient_price_1,
-  //       //   ],
-  //       // },
-  //       { brand_note: rows[0].brand_note },
-  //       { size_name: rows[0].size_name },
-  //       { ingredient_name: rows[0].ingredient_name },
-  //       { sugar_name: "糖度" },
-  //       { temperature_name: "溫度" },
-  //     ];
-  //     console.log(newdata);
-  //     res.send(JSON.stringify(newdata));
-  //   }
-  // );
+        console.log(neworderDetails);
+        conn.query(
+          "INSERT INTO order_details (orders_id, details_name, details_size, details_sugar, details_mperatures, details_ingredient, details_amount, details_quantity, details_total, updatetime, createtime) VALUES  ?",
+          [neworderDetails],
+          (err) => {
+            if (err) {
+              console.log(JSON.stringify(err));
+            } else {
+              console.log("成功寫入訂單資訊、明細");
+            }
+          }
+        );
+      }
+    }
+  );
 });
