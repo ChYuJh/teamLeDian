@@ -13,7 +13,8 @@ import Profile from "./components/Profile";
 import order from "./components/order";
 import cartList from "./components/cartList";
 import cartPay from "./components/cartPay";
-import DateTimePicker from "./components/dateTimePicker";
+import test from "./components/test";
+
 class App extends Component {
   render() {
     return (
@@ -32,7 +33,7 @@ class App extends Component {
             <Route path="/order" component={order} exact />
             <Route path="/cartlist" component={cartList} exact />
             <Route path="/cartPay/:id" component={cartPay} />
-            {/* <Route path="/test" component={DateTimePicker} /> */}
+            <Route path="/test" component={test} />
             <Route component={Error} />
           </Switch>
         </div>

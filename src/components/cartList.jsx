@@ -10,10 +10,16 @@ import { GiCancel } from "react-icons/gi";
 import axios from "axios";
 class cartList extends Component {
   state = { dbData: [{ brand_id: "1" }] };
-  delete_btn = (e) => {
+
+  delete_btn = async (id, i, e) => {
     e.preventDefault();
-    alert("delete");
+    let newState = { ...this.state };
+    console.log(newState.dbData.splice(i, 1));
+    this.setState(newState);
+    let url = "http://localhost:8000/cartdelete/" + id;
+    await axios.delete(url);
   };
+
   render() {
     return (
       <React.Fragment>
@@ -175,7 +181,9 @@ class cartList extends Component {
                               <div className="text-center">
                                 <div className="btn btn-pay">結帳</div>
                                 <div
-                                  onClick={this.delete_btn}
+                                  onClick={(e) => {
+                                    this.delete_btn(cart.cart_id, i, e);
+                                  }}
                                   className="btn-garbage ps-2 mt-3"
                                 >
                                   <FaRegTrashAlt className="trash" />
@@ -189,87 +197,6 @@ class cartList extends Component {
                   </div>
                 );
               })}
-
-              {/* <div className="mb-5 mx-auto list-item row d-flex align-items-stretch">
-                <a className="d-md-block p-4 a-link" href="./payStep.html">
-                  <div className="row text-end">
-                    <p className="col text-des-small">02/23 20:30</p>
-                  </div>
-                  <div className="row d-flex d-flex align-items-stretch">
-                    <div className="col-auto col-3-mb mb-3 mb-md-0 mx-auto">
-                      <img
-                        src={require("../img/logo/4.png")}
-                        alt="log"
-                        className="logo"
-                      />
-                    </div>
-
-                    <div className="col-12 col-md-5 mb-md-0 text-center text-md-start d-flex flex-column justify-content-around">
-                      <h2 className="text-title">龜記茗品 (大里成功店)</h2>
-                      <p className="text-des-small d-none d-md-block">
-                        台中市大里區成功路462號
-                      </p>
-                    </div>
-                    <div className="col-12 col-md mb-3 mb-md-0">
-                      <div className="row d-flex flex-column mt-3">
-                        <div className="col d-flex justify-content-around">
-                          <p className="text-title">5項</p>
-                          <p className="text-title">$302</p>
-                          <div className="text-center">
-                            <div className="btn btn-pay">結帳</div>
-                            <div
-                              onClick={this.delete_btn}
-                              className="btn-garbage ps-2 mt-3"
-                            >
-                              <FaRegTrashAlt className="trash" />
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </a>
-              </div>
-              <div className="mb-5 mx-auto list-item row d-flex align-items-stretch">
-                <a className="d-md-block p-4 a-link" href="./payStep.html">
-                  <div className="row text-end">
-                    <p className="col text-des-small">02/23 20:30</p>
-                  </div>
-                  <div className="row d-flex d-flex align-items-stretch">
-                    <div className="col-auto col-3-mb mb-3 mb-md-0 mx-auto">
-                      <img
-                        src={require("../img/logo/4.png")}
-                        alt="log"
-                        className="logo"
-                      />
-                    </div>
-
-                    <div className="col-12 col-md-5 mb-md-0 text-center text-md-start d-flex flex-column justify-content-around">
-                      <h2 className="text-title">龜記茗品 (大里成功店)</h2>
-                      <p className="text-des-small d-none d-md-block">
-                        台中市大里區成功路462號
-                      </p>
-                    </div>
-                    <div className="col-12 col-md mb-3 mb-md-0">
-                      <div className="row d-flex flex-column mt-3">
-                        <div className="col d-flex justify-content-around">
-                          <p className="text-title">5項</p>
-                          <p className="text-title">$302</p>
-                          <div className="text-center">
-                            <div className="btn btn-pay">結帳</div>
-                            <div
-                              onClick={this.delete_btn}
-                              className="btn-garbage ps-2 mt-3"
-                            >
-                              <FaRegTrashAlt className="trash" />
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </a>
-              </div> */}
             </div>
           </div>
         </div>

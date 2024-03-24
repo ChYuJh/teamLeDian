@@ -60,8 +60,9 @@ class cartPay extends Component {
         { sugar_choose: [] },
         { ingredient: [] },
         { brand_note: "" },
+        { catrs_index: 0 },
         {},
-        {},
+        //商品資訊
         {
           product: {
             product_name: "水之森玄米抹茶",
@@ -73,6 +74,7 @@ class cartPay extends Component {
             products_price_2: 0,
           },
         },
+        //商品明細
         {
           cats_item: {
             item_size: "M",
@@ -162,7 +164,6 @@ class cartPay extends Component {
     let newState = { ...this.state };
     newState.usePoninter = e.target.value === "" ? 0 : e.target.value;
     newState.lastPrice = newState.sumPrice - newState.usePoninter;
-    console.log(newState.lastPrice);
     this.setState(newState);
   };
 
@@ -171,7 +172,6 @@ class cartPay extends Component {
     let newState;
     newState = this.state;
     newState.bag_isChecked = !newState.bag_isChecked;
-    console.log(newState);
 
     //計算袋子數量
     let num = 0;
@@ -193,7 +193,6 @@ class cartPay extends Component {
   name_change = (e) => {
     let newState = { ...this.state };
     newState.pickupInfo.personName = e.target.value;
-    console.log(newState);
     this.setState(newState);
   };
   name_check = () => {
@@ -217,7 +216,6 @@ class cartPay extends Component {
   phone_change = (e) => {
     let newState = { ...this.state };
     newState.pickupInfo.personPhone = e.target.value;
-    // console.log(newState);
     this.setState(newState);
   };
   phone_check = () => {
@@ -261,7 +259,6 @@ class cartPay extends Component {
     let newState = { ...this.state };
     newState.memo = e.target.value;
     this.setState(newState);
-    console.log(newState);
   };
 
   //發票
@@ -269,7 +266,6 @@ class cartPay extends Component {
     let newState = { ...this.state };
     newState.uniform = e.target.value;
     this.setState(newState);
-    console.log(newState);
   };
 
   //統一標號
@@ -277,7 +273,6 @@ class cartPay extends Component {
     let newState = { ...this.state };
     newState.vehicle = e.target.value;
     this.setState(newState);
-    console.log(newState);
   };
 
   //檢查是否選取時間
@@ -309,12 +304,80 @@ class cartPay extends Component {
     let minutes = newState.selectedDate.getMinutes().toString().padStart(2, 0);
     let seconds = newState.selectedDate.getSeconds().toString().padStart(2, 0);
     newState.pickupTime = `${year}/${month}/${date} ${hours}:${minutes}:${seconds}`;
-    console.log(newState.selectedDate.getDate());
-
     this.setState(newState);
-    // console.log(this.state.pickupTime);
   };
 
+  //提交訂單
+  // handleButtonClick = async () => {
+  //   let newSate = { ...this.state };
+  //   let detailsdata;
+  //   detailsdata = newSate.dbcarts.map((item) => {
+  //     return {
+  //       // orders_id:item.,
+  //       details_name: item.item_name,
+  //       details_size: item.item_size,
+  //       details_sugar: item.item_sugar,
+  //       details_mperatures: item.item_temperatures,
+  //       details_ingredient: item.item_ingredient,
+  //       details_amount: item.total_price,
+  //       details_quantity: item.item_quantity,
+  //       details_total: item.total_price * item.item_quantity,
+  //       updatetime: new Date(),
+  //       createtime: new Date(),
+  //     };
+  //   });
+
+  //   //datails迴圈整理
+  //   let serverData = {
+  //     user_id: 1,
+  //     branch_id: 1,
+  //     orders_total: this.state.lastPrice,
+  //     orders_bag: this.state.bag_isChecked ? 1 : 0,
+  //     orders_bag_num: this.state.bagQuantity,
+  //     usePoninter: Number(this.state.usePoninter),
+  //     terms_of_payment: Number(this.state.payMethod),
+  //     invoicing_method: Number(this.state.vehicle),
+  //     orders_pick_up: this.state.pickupTime,
+  //     orders_status: 1,
+  //     payment_status: Number(this.state.payMethod) === 1 ? 1 : 2,
+  //     updatetime: new Date(),
+  //     createtime: new Date(),
+  //     details: detailsdata,
+  //   };
+  //   // this.nextStep();
+  //   // console.log("serverData:", serverData);
+  //   let config = {
+  //     headers: {
+  //       "content-type": "application/json",
+  //     },
+  //   };
+  //   //寫入訂單
+  //   await axios.post("http://localhost:8000/cartPay", serverData, config);
+
+  //   // //串接linepay
+  //   // await axios.post(
+  //   //   "http://localhost:8000/test0231/783743",
+  //   //   JSON.stringify(serverData),
+  //   //   config
+  //   // );
+  // };
+  onTime = () => {
+    const date = new Date();
+    const mm = date.getMonth() + 1;
+    const dd = date.getDate();
+    const hh = date.getHours();
+    const mi = date.getMinutes();
+    const ss = date.getSeconds();
+
+    return [
+      date.getFullYear(),
+      "-" + (mm > 9 ? "" : "0") + mm,
+      "-" + (dd > 9 ? "" : "0") + dd,
+      " " + (hh > 9 ? "" : "0") + hh,
+      ":" + (mi > 9 ? "" : "0") + mi,
+      ":" + (ss > 9 ? "" : "0") + ss,
+    ].join("");
+  };
   //提交訂單
   handleButtonClick = async () => {
     let newSate = { ...this.state };
@@ -371,11 +434,11 @@ class cartPay extends Component {
   //付款方式
   payMethod_change = (e) => {
     let newSate = { ...this.state };
-    console.log(newSate);
+    // console.log(newSate);
     newSate.payMethod = Number(e.target.value);
-    console.log(newSate.payMethod);
+    // console.log(newSate.payMethod);
     this.setState(newSate);
-    console.log(this.state);
+    // console.log(this.state);
   };
 
   //發票
@@ -383,41 +446,41 @@ class cartPay extends Component {
     let newSate = { ...this.state };
     newSate.receipt = e.target.value;
     this.setState(newSate);
-    console.log(this.state.receipt);
+    // console.log(this.state.receipt);
   };
 
   //商品編輯
-  product_edit = async (id) => {
+  product_edit = async (id, index) => {
     console.log(id);
-    alert(id);
+    alert(index);
     let newSate = { ...this.state };
     let result = await axios.get(`http://localhost:8000/itemedit/${id}`);
     newSate.dbcarts.item_id = id;
-
     newSate.productEdit = result.data;
+    newSate.productEdit[5].catrs_index = index;
     console.log("productEdit:", newSate.productEdit);
-    console.log(newSate);
+    // console.log(newSate);
     this.setState(newSate);
   };
 
   //尺寸
   size_change = (e) => {
-    console.log(e.target.dataset.temperatures);
+    // console.log(e.target.dataset.temperatures);
     let newState = { ...this.state };
     newState.productEdit[8].cats_item.item_size = e.target.value;
     this.setState(newState);
-    console.log(newState);
+    // console.log(newState);
   };
   //甜度
   sugar_change = (e) => {
-    console.log(e.target.value);
+    // console.log(e.target.value);
     let newState = { ...this.state };
     newState.productEdit[8].cats_item.item_sugar = e.target.value;
     this.setState(newState);
   };
   //溫度
   temperatures_change = (e) => {
-    console.log(e.target.value);
+    // console.log(e.target.value);
     let newState = { ...this.state };
     newState.productEdit[8].cats_item.item_temperatures = e.target.value;
     this.setState(newState);
@@ -426,30 +489,153 @@ class cartPay extends Component {
   ingredient_change = (e) => {
     // console.log(e.target.checked);
     let newState = { ...this.state };
-    console.log(newState.productEdit[8].cats_item.item_ingredient);
+    let ingredient_price = Number(e.target.dataset.price);
     if (e.target.checked) {
-      newState.productEdit[8].cats_item.item_ingredient =
+      let newIngredient =
         newState.productEdit[8].cats_item.item_ingredient +
         `、${e.target.value}`;
-      newState.productEdit[8].cats_item.ingredient_price +=
-        e.target.dataset.price;
+      newState.productEdit[8].cats_item.item_ingredient = newIngredient;
+
+      newState.productEdit[8].cats_item.ingredient_price += ingredient_price;
+      newState.productEdit[8].cats_item.total_price =
+        newState.productEdit[8].cats_item.item_price +
+        newState.productEdit[8].cats_item.ingredient_price;
+
+      this.setState(newState);
     } else {
-      let newitem_ingredient = newState.productEdit[8].cats_item.item_ingredient
-        .split("、")
-        .filter((i) => i !== e.target.value)
-        .toString()
-        .replace(",", "、");
-      newState.productEdit[8].cats_item.item_ingredient = newitem_ingredient;
-      newState.productEdit[8].cats_item.ingredient_price -=
-        e.target.dataset.price;
+      let removedIngredient = e.target.value;
+      let remainingIngredients =
+        newState.productEdit[8].cats_item.item_ingredient
+          .split("、")
+          .filter((item) => item !== removedIngredient);
+
+      console.log(remainingIngredients);
+      newState.productEdit[8].cats_item.item_ingredient =
+        remainingIngredients.join("、");
+      newState.productEdit[8].cats_item.ingredient_price -= ingredient_price;
+      newState.productEdit[8].cats_item.total_price =
+        newState.productEdit[8].cats_item.item_price +
+        newState.productEdit[8].cats_item.ingredient_price;
+      this.setState(newState);
     }
-    console.log(newState);
+  };
 
-    //newState.productEdit[8].cats_item.item_ingredient = e.target.value;
-
+  //數量增加
+  add_quantity = () => {
+    let newState = { ...this.state };
+    newState.productEdit[8].cats_item.item_quantity += 1;
     this.setState(newState);
   };
 
+  // 數量減少
+  reduce_quantity = () => {
+    let newState = { ...this.state };
+    if (newState.productEdit[8].cats_item.item_quantity <= 1) {
+      return;
+    }
+    newState.productEdit[8].cats_item.item_quantity -= 1;
+    this.setState(newState);
+  };
+
+  update_cart = async (index) => {
+    alert("更新" + index);
+    let newState = { ...this.state };
+
+    //更新畫面
+    newState.dbcarts[index].item_quantity =
+      this.state.productEdit[8].cats_item.item_quantity;
+    newState.dbcarts[index].item_size =
+      this.state.productEdit[8].cats_item.item_size;
+    newState.dbcarts[index].item_sugar =
+      this.state.productEdit[8].cats_item.item_sugar;
+    newState.dbcarts[index].item_ingredient =
+      this.state.productEdit[8].cats_item.item_ingredient;
+    newState.dbcarts[index].total_price =
+      this.state.productEdit[8].cats_item.total_price;
+
+    let quantity = 0;
+    let sumPrice = 0;
+    newState.dbcarts.forEach((item) => {
+      console.log("item", item);
+      quantity += Number(item.item_quantity);
+      sumPrice += item.total_price * item.item_quantity;
+    });
+    console.log(quantity);
+
+    newState.quantity = quantity;
+    newState.sumPrice = sumPrice;
+    newState.lastPrice = sumPrice;
+
+    console.log("new", newState);
+    this.setState(newState);
+
+    let item_sum = 0;
+    let price_sum = 0;
+    newState.dbcarts.forEach((item) => {
+      item_sum += item.item_quantity;
+      price_sum += item.total_price * item.item_quantity;
+    });
+    console.log(item_sum);
+    newState.quantity = item_sum;
+    newState.sumPrice = price_sum;
+    newState.lastPrice =
+      price_sum - this.state.usePoninter + this.state.bagQuantity * 2;
+
+    //寫入資料庫
+    let serverData = {
+      item_quantity: this.state.productEdit[8].cats_item.item_quantity,
+      item_size: this.state.productEdit[8].cats_item.item_size,
+      item_sugar: this.state.productEdit[8].cats_item.item_sugar,
+      item_ingredient: this.state.productEdit[8].cats_item.item_ingredient,
+      ingredient_price: this.state.productEdit[8].cats_item.ingredient_price,
+      total_price: this.state.productEdit[8].cats_item.total_price,
+    };
+    let config = {
+      headers: {
+        "content-type": "application/json",
+      },
+    };
+    console.log(this.state.dbcarts[index].item_id);
+    await axios.patch(
+      `http://localhost:8000/itemedit/${this.state.dbcarts[index].item_id}`,
+      serverData,
+      config
+    );
+  };
+
+  //刪除商品
+  product_delete = async (itemid, index) => {
+    console.log(itemid);
+    console.log(index);
+    let newState = { ...this.state };
+    if (newState.dbcarts.length === 1) {
+      alert("已無法再減少商品了");
+      return;
+    }
+    newState.dbcarts.splice(index, 1);
+    let quantity = 0;
+    let sumPrice = 0;
+    newState.dbcarts.forEach((item) => {
+      console.log("item", item);
+      quantity += Number(item.item_quantity);
+      sumPrice += item.total_price * item.item_quantity;
+    });
+    newState.quantity = quantity;
+    newState.sumPrice = sumPrice;
+    newState.lastPrice = sumPrice;
+    let item_sum = 0;
+    let price_sum = 0;
+    newState.dbcarts.forEach((item) => {
+      item_sum += item.item_quantity;
+      price_sum += item.total_price * item.item_quantity;
+    });
+    newState.quantity = item_sum;
+    newState.sumPrice = price_sum;
+    newState.lastPrice =
+      price_sum - this.state.usePoninter + this.state.bagQuantity * 2;
+    this.setState(newState);
+    await axios.delete("http://localhost:8000/itemdelete/" + itemid);
+  };
   render() {
     const { currentStep } = this.state;
     return (
@@ -709,6 +895,11 @@ class cartPay extends Component {
                                 key={this.state.keyForDateTimePicker}
                                 onTime={this.getTimeValue}
                                 message={this.state.selectedDate}
+                                branch={
+                                  this.state.dbcarts.length > 0
+                                    ? this.state.dbcarts[0].branch_id
+                                    : null
+                                }
                               />
                             </div>
                           </div>
@@ -749,9 +940,7 @@ class cartPay extends Component {
                                       <div className="row d-flex align-items-end justify-content-center">
                                         <div className="col d-flex justify-content-around align-items-center">
                                           <p className="text-des mb-0">
-                                            $
-                                            {item.item_price +
-                                              item.ingredient_price}
+                                            ${item.total_price}
                                           </p>
                                           <p className="text-des mb-0">
                                             x{item.item_quantity}
@@ -759,6 +948,12 @@ class cartPay extends Component {
                                           <button
                                             type="button"
                                             className="btn-delete"
+                                            onClick={() => {
+                                              this.product_delete(
+                                                item.item_id,
+                                                i
+                                              );
+                                            }}
                                           >
                                             <FaRegTrashAlt className="trash" />
                                           </button>
@@ -768,7 +963,10 @@ class cartPay extends Component {
                                             type="button"
                                             className="btn-edit"
                                             onClick={() => {
-                                              this.product_edit(item.item_id);
+                                              this.product_edit(
+                                                item.item_id,
+                                                i
+                                              );
                                             }}
                                           >
                                             <span>
@@ -867,9 +1065,6 @@ class cartPay extends Component {
                                                   ) {
                                                     this.state.productEdit[8].cats_item.item_temperatures_range =
                                                       item.temperatures;
-                                                    // this.setState(newState);
-                                                    // console.log(newSate);
-                                                    // console.log(this.state);
                                                   }
                                                   return (
                                                     <div
@@ -1148,12 +1343,6 @@ class cartPay extends Component {
                                               this.state.productEdit[2].sugar_choose.map(
                                                 (item, i) => {
                                                   if (item) {
-                                                    console.log(
-                                                      item ===
-                                                        this.state
-                                                          .productEdit[8]
-                                                          .cats_item.item_sugar
-                                                    );
                                                     return (
                                                       <div
                                                         className="col-4 form-check"
@@ -1235,12 +1424,6 @@ class cartPay extends Component {
                                                 .slice(1)
                                                 .map((item, i) => {
                                                   if (item) {
-                                                    console.log(
-                                                      item ===
-                                                        this.state
-                                                          .productEdit[8]
-                                                          .cats_item.item_sugar
-                                                    );
                                                     return (
                                                       <div
                                                         className="col-4 form-check"
@@ -1284,12 +1467,6 @@ class cartPay extends Component {
                                                 .slice(0, 5)
                                                 .map((item, i) => {
                                                   if (item) {
-                                                    console.log(
-                                                      item ===
-                                                        this.state
-                                                          .productEdit[8]
-                                                          .cats_item.item_sugar
-                                                    );
                                                     return (
                                                       <div
                                                         className="col-4 form-check"
@@ -1335,14 +1512,7 @@ class cartPay extends Component {
                                                     i === 4 || i === 6
                                                 )
                                                 .map((item, i) => {
-                                                  console.log(item);
                                                   if (item) {
-                                                    console.log(
-                                                      item ===
-                                                        this.state
-                                                          .productEdit[8]
-                                                          .cats_item.item_sugar
-                                                    );
                                                     return (
                                                       <div
                                                         className="col-4 form-check"
@@ -1408,10 +1578,9 @@ class cartPay extends Component {
                                                     this.state.productEdit[8].cats_item.item_ingredient.split(
                                                       "、"
                                                     );
-                                                  console.log(
-                                                    item_ingredient_ary
-                                                  );
-
+                                                  // console.log(
+                                                  //   item_ingredient_ary
+                                                  // );
                                                   return (
                                                     <div
                                                       className="col-4 form-check"
@@ -1460,11 +1629,11 @@ class cartPay extends Component {
                                       </div>
                                       <div className="row footer">
                                         <div className="col-6 modaltop  ">
-                                          總金額 :{" "}
-                                          {
+                                          總金額 :
+                                          {this.state.productEdit[8].cats_item
+                                            .item_price +
                                             this.state.productEdit[8].cats_item
-                                              .total_price
-                                          }{" "}
+                                              .ingredient_price}
                                           元
                                         </div>
                                         <div className="col-6 text-">
@@ -1473,6 +1642,7 @@ class cartPay extends Component {
                                               <button
                                                 type="button"
                                                 className="btn add btn-outline-warning"
+                                                onClick={this.reduce_quantity}
                                               >
                                                 <svg
                                                   xmlns="http://www.w3.org/2000/svg"
@@ -1490,12 +1660,18 @@ class cartPay extends Component {
                                               </button>
                                             </div>
                                             <div className="col-4 text-center">
-                                              <div className="price">10</div>
+                                              <div className="price">
+                                                {
+                                                  this.state.productEdit[8]
+                                                    .cats_item.item_quantity
+                                                }
+                                              </div>
                                             </div>
                                             <div className="col-4 text-center">
                                               <button
                                                 type="button"
                                                 className="btn add btn-outline-warning"
+                                                onClick={this.add_quantity}
                                               >
                                                 <svg
                                                   xmlns="http://www.w3.org/2000/svg"
@@ -1520,6 +1696,12 @@ class cartPay extends Component {
                                       <button
                                         className="btn btn-outline-warning"
                                         type="button"
+                                        onClick={() => {
+                                          this.update_cart(
+                                            this.state.productEdit[5]
+                                              .catrs_index
+                                          );
+                                        }}
                                       >
                                         加入購物車
                                       </button>
@@ -2101,7 +2283,7 @@ class cartPay extends Component {
       </React.Fragment>
     );
   }
-  // 在更新状态时设置 key
+  //更新狀態key
   updateState = () => {
     this.setState({
       // 更新状态
@@ -2123,16 +2305,20 @@ class cartPay extends Component {
 
     newState.dbcarts.forEach((item) => {
       quantity += item.item_quantity;
-      sumPrice += item.total_price;
+      console.log(item.item_price + item.ingredient_price * item.item_quantity);
+      sumPrice +=
+        (item.item_price + item.ingredient_price) * item.item_quantity;
     });
+    console.log(sumPrice);
     newState.quantity = quantity;
     newState.sumPrice = sumPrice;
     newState.lastPrice = sumPrice;
 
     this.setState(newState);
     console.log("dbcart", this.state.dbcarts);
-
-    console.log(this.newState);
   };
 }
 export default cartPay;
+
+// ingredient_price
+//item_ingredient
