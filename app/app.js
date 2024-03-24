@@ -961,8 +961,8 @@ app.post("/cartPay", function (req, res) {
     orders_status: req.body.orders_status,
     payment_status: req.body.payment_status,
     orders_pick_up: req.body.orders_pick_up,
-    updatetime: req.body.updatetime,
-    createtime: req.body.createtime,
+    updatetime: onTime(),
+    createtime: onTime(),
   };
   const orderDetails = req.body.details;
   let neworderDetails;
@@ -1004,8 +1004,8 @@ app.post("/cartPay", function (req, res) {
             item.details_amount,
             item.details_quantity,
             item.details_total,
-            item.updatetime,
-            item.createtime,
+            onTime(),
+            onTime(),
           ];
         });
 
@@ -1108,22 +1108,19 @@ app.delete("/itemdelete/:itemid", function (req, res) {
 // }
 // app
 //   .post("/test0231/:orderId", async function (req, res) {
+//     // ordertoDatabase();
 //     try {
 //       let orderDate;
 //       let orders = {};
 //       let { orderId } = req.params;
 //       const row = await new Promise((resolve, reject) => {
-//         conn.query(
-//           "SELECT * FROM orders where orders_id=43",
-//           [],
-//           (err, row) => {
-//             if (err) {
-//               reject(err);
-//             } else {
-//               resolve(row);
-//             }
+//         conn.query("SELECT * FROM orders where orders_id=2", [], (err, row) => {
+//           if (err) {
+//             reject(err);
+//           } else {
+//             resolve(row);
 //           }
-//         );
+//         });
 //       });
 
 //       console.log(row[0]);
@@ -1154,8 +1151,8 @@ app.delete("/itemdelete/:itemid", function (req, res) {
 //       const linePayBody = {
 //         ...order,
 //         redirectUrls: {
-//           confirmUrl: "http://localhost:3000/linepay/confirm",
-//           cancelUrl: "http://localhost:3000/linepay/cancel",
+//           confirmUrl: "https://localhost:3000/linepay/confirm",
+//           cancelUrl: "https://localhost:3000/linepay/cancel",
 //         },
 //       };
 //       console.log("linePayBody", linePayBody);
@@ -1164,17 +1161,13 @@ app.delete("/itemdelete/:itemid", function (req, res) {
 //       //準備送給linepay
 //       const url = `${LINEPAY_SITE}/${LINEPAY_VERSION}${uri}`;
 
-//       const linePayRes = await axios.post(url, linePayBody, {
-//         headers,
-//         withCredentials: true,
-//       });
+//       const linePayRes = await axios.post(url, linePayBody, { headers });
 //       console.log("linePayRes", linePayRes.data);
 //       console.log(linePayRes.data.info);
 //       if (linePayRes?.data?.returnCode === "0000") {
-//         console.log("web", linePayRes?.data?.info.paymentUrl.web);
-//         res.redirect(linePayRes?.data?.info.paymentUrl.web); //
+//         res.redirect(linePayRes?.data?.info.paymentUrl.web); //有成功返回linepay 付款網址但無法成功轉址
 //       }
-
+//       console.log("web", linePayRes?.data?.info.paymentUrl.web); //'https://sandbox-web-pay.line.me/web/payment/wait?transactionReserveId=RUpIVkRJQ0lyR2FBL3hzRUFQVm5XaEFxSHlXWGlHWjVmUTVVdUR2ZHg4YUJuU0NmSGpFMzdWdU1VdW41UlhEbA',
 //       console.log(linePayRes);
 //     } catch (err) {
 //       console.log(err);
@@ -1187,7 +1180,6 @@ app.delete("/itemdelete/:itemid", function (req, res) {
 
 //     try {
 //       const order = orders[orderId];
-//       console.log(order);
 //       const linePayBody = {
 //         amount: order.amount,
 //         currency: "TWD",
@@ -1195,10 +1187,7 @@ app.delete("/itemdelete/:itemid", function (req, res) {
 //       const uri = `/payments/${transactionId}/confirm`;
 //       const headers = createSignature(uri, linePayBody);
 //       const url = `${LINEPAY_SITE}/${LINEPAY_VERSION}${uri}`;
-//       const linePayRes = await axios.post(url, linePayBody, {
-//         headers,
-//         withCredentials: true,
-//       });
+//       const linePayRes = await axios.post(url, linePayBody, { headers });
 //       console.log(linePayRes);
 //       res.end();
 //       //交易成功轉址

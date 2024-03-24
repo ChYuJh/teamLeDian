@@ -303,81 +303,10 @@ class cartPay extends Component {
     let hours = newState.selectedDate.getHours().toString().padStart(2, 0);
     let minutes = newState.selectedDate.getMinutes().toString().padStart(2, 0);
     let seconds = newState.selectedDate.getSeconds().toString().padStart(2, 0);
-    newState.pickupTime = `${year}/${month}/${date} ${hours}:${minutes}:${seconds}`;
+    newState.pickupTime = `${year}-${month}-${date} ${hours}:${minutes}:${seconds}`;
     this.setState(newState);
   };
 
-  //提交訂單
-  // handleButtonClick = async () => {
-  //   let newSate = { ...this.state };
-  //   let detailsdata;
-  //   detailsdata = newSate.dbcarts.map((item) => {
-  //     return {
-  //       // orders_id:item.,
-  //       details_name: item.item_name,
-  //       details_size: item.item_size,
-  //       details_sugar: item.item_sugar,
-  //       details_mperatures: item.item_temperatures,
-  //       details_ingredient: item.item_ingredient,
-  //       details_amount: item.total_price,
-  //       details_quantity: item.item_quantity,
-  //       details_total: item.total_price * item.item_quantity,
-  //       updatetime: new Date(),
-  //       createtime: new Date(),
-  //     };
-  //   });
-
-  //   //datails迴圈整理
-  //   let serverData = {
-  //     user_id: 1,
-  //     branch_id: 1,
-  //     orders_total: this.state.lastPrice,
-  //     orders_bag: this.state.bag_isChecked ? 1 : 0,
-  //     orders_bag_num: this.state.bagQuantity,
-  //     usePoninter: Number(this.state.usePoninter),
-  //     terms_of_payment: Number(this.state.payMethod),
-  //     invoicing_method: Number(this.state.vehicle),
-  //     orders_pick_up: this.state.pickupTime,
-  //     orders_status: 1,
-  //     payment_status: Number(this.state.payMethod) === 1 ? 1 : 2,
-  //     updatetime: new Date(),
-  //     createtime: new Date(),
-  //     details: detailsdata,
-  //   };
-  //   // this.nextStep();
-  //   // console.log("serverData:", serverData);
-  //   let config = {
-  //     headers: {
-  //       "content-type": "application/json",
-  //     },
-  //   };
-  //   //寫入訂單
-  //   await axios.post("http://localhost:8000/cartPay", serverData, config);
-
-  //   // //串接linepay
-  //   // await axios.post(
-  //   //   "http://localhost:8000/test0231/783743",
-  //   //   JSON.stringify(serverData),
-  //   //   config
-  //   // );
-  // };
-  onTime = () => {
-    const date = new Date();
-    const mm = date.getMonth() + 1;
-    const dd = date.getDate();
-    const hh = date.getHours();
-    const mi = date.getMinutes();
-    const ss = date.getSeconds();
-
-    return [
-      date.getFullYear(),
-      "-" + (mm > 9 ? "" : "0") + mm,
-      "-" + (dd > 9 ? "" : "0") + dd,
-      " " + (hh > 9 ? "" : "0") + hh,
-      ":" + (mi > 9 ? "" : "0") + mi,
-      ":" + (ss > 9 ? "" : "0") + ss,
-    ].join("");
-  };
   //提交訂單
   handleButtonClick = async () => {
     let newSate = { ...this.state };
@@ -428,6 +357,14 @@ class cartPay extends Component {
       JSON.stringify(serverData),
       config
     );
+
+    //   // //串接linepay
+    // await axios.post(
+    //   "http://localhost:8000/test0231/783743",
+    //   JSON.stringify(serverData),
+    //   config
+    // );
+    // };
   };
 
   ///訂單確認
@@ -854,7 +791,7 @@ class cartPay extends Component {
                           <div className="row d-flex justify-content-center mt-5">
                             <div className="col-12">
                               <label className="text-title" htmlFor="time">
-                                取貨時間<span className="star">*</span>
+                                取貨時間<span className="star-must">*</span>
                               </label>
                             </div>
                             <div className="col mt-3">
@@ -1705,7 +1642,7 @@ class cartPay extends Component {
                                   value={this.state.usePoninter}
                                   onChange={this.pointerChange}
                                 />
-                                <p className="mt-3 ps-3 text-des star mb-0">
+                                <p className="mt-3 ps-3 text-des star-must mb-0">
                                   可用點數:{this.state.remainingPoints}
                                 </p>
                               </div>
@@ -1767,9 +1704,9 @@ class cartPay extends Component {
                             )}
                             <div className="col-10 d-flex mt-2 ms-3">
                               <div className="col d-flex">
-                                <p className="text-des star">點數折扣</p>
+                                <p className="text-des star-must">點數折扣</p>
                               </div>
-                              <div className="col text-des text-end star">
+                              <div className="col text-des text-end star-must">
                                 <p>
                                   <span>-</span>
                                   {this.state.usePoninter}
@@ -1828,7 +1765,7 @@ class cartPay extends Component {
                             </div>
                             <div className="col-10 mt-4 mb-2 ms-2">
                               <label htmlFor="" className="text-des">
-                                取貨人姓名<span className="star">*</span>
+                                取貨人姓名<span className="star-must">*</span>
                               </label>
                               <input
                                 className="ms-2 mt-3 form-control input-box"
@@ -1841,7 +1778,7 @@ class cartPay extends Component {
                             </div>
                             <div className="col-10 mt-3 mb-2 ms-2">
                               <label htmlFor="" className="text-des">
-                                取貨人電話<span className="star">*</span>
+                                取貨人電話<span className="star-must">*</span>
                               </label>
                               <input
                                 className="ms-2 mt-3 form-control input-box"
@@ -1857,7 +1794,7 @@ class cartPay extends Component {
                           <div className="row d-flex justify-content-center mt-5">
                             <div className="col-10">
                               <h4 className="text-title">
-                                付款方式<span className="star">*</span>
+                                付款方式<span className="star-must">*</span>
                               </h4>
                             </div>
                             <div className="col-10 mt-3 mb-2">
@@ -1903,7 +1840,7 @@ class cartPay extends Component {
                           <div className="row d-flex justify-content-center mt-5">
                             <div className="col-10">
                               <h4 className="text-title">
-                                開立發票<span className="star">*</span>
+                                開立發票<span className="star-must">*</span>
                               </h4>
                             </div>
                             <div className="col-10 mt-3 mb-2">
