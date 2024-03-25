@@ -1056,6 +1056,7 @@ app.patch("/itemedit/:itemid", function (req, res) {
   );
 });
 
+//刪除購物車
 app.delete("/cartdelete/:cartid", function (req, res) {
   console.log("刪除");
   console.log(req.params.cartid);
