@@ -668,7 +668,7 @@ app.get("/region/:cityId", function (req, res) {
   );
 });
 
-app.get("/cartlist", function (req, res) {
+app.get("/cartlist/:id", function (req, res) {
   conn.query(
     "SELECT  *,  SUM(cartdetails.item_quantity) as total_item ,  SUM(cartdetails.total_price*cartdetails.item_quantity) as total_item_price FROM branch LEFT join  cartdetails ON branch.branch_id=cartdetails.branch_id LEFT join brand on cartdetails.brand_id=brand.brand_id  WHERE user_id=1   GROUP BY cart_id  ",
     [],
@@ -706,14 +706,17 @@ app.get("/itemedit/:id", function (req, res) {
             {
               size: rows[0].choose_size_0 ? rows[0].size_0_name : "",
               temperatures: rows[0].choose_size_0,
+              products_price: rows[0].products_price_0,
             },
             {
               size: rows[0].choose_size_1 ? rows[0].size_1_name : "",
               temperatures: rows[0].choose_size_1,
+              products_price: rows[0].products_price_1,
             },
             {
               size: rows[0].choose_size_2 ? rows[0].size_1_name : "",
               temperatures: rows[0].choose_size_2,
+              products_price: rows[0].products_price_2,
             },
           ],
         },
@@ -825,7 +828,7 @@ app.get("/itemedit/:id", function (req, res) {
             // choose_size_0: 0,
             // choose_size_1: 3,
             // choose_size_2: 0,
-            choose_sugar: 6, //rows[0].choose_sugar
+            choose_sugar: rows[0].choose_sugar,
             choose_ingredient: rows[0].choose_ingredient,
             products_price_0: rows[0].products_price_0,
             products_price_1: rows[0].products_price_1,
@@ -1032,11 +1035,12 @@ app.patch("/itemedit/:itemid", function (req, res) {
   console.log(req.params.itemid);
   console.log(req.body);
   conn.query(
-    "UPDATE cartdetails SET item_quantity= ?,  item_size= ?,item_sugar= ?,item_ingredient=?,ingredient_price=?,total_price=? WHERE item_id=?",
+    "UPDATE cartdetails SET item_quantity= ?,  item_size= ?,item_sugar= ?,item_price=?,item_ingredient=?,ingredient_price=?,total_price=? WHERE item_id=?",
     [
       req.body.item_quantity,
       req.body.item_size,
       req.body.item_sugar,
+      req.body.item_price,
       req.body.item_ingredient,
       req.body.ingredient_price,
       req.body.total_price,

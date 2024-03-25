@@ -122,7 +122,7 @@ class cartList extends Component {
                   >
                     <a
                       className="d-md-block p-4 a-link"
-                      href={`./cartPay/${cart.cart_id}`}
+                      href={`/cartPay/${cart.cart_id}`}
                     >
                       <div className="row text-end">
                         <p className="col text-des-small">02/23 20:30</p>
@@ -316,7 +316,7 @@ class cartList extends Component {
   componentDidMount = async () => {
     let newState = { ...this.state };
     let result;
-    result = await axios.get("http://localhost:8000/cartlist");
+    result = await axios.get("http://localhost:8000/cartlist/1");
 
     newState.dbData = result.data;
     this.setState(newState);

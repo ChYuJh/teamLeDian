@@ -389,14 +389,13 @@ class cartPay extends Component {
   //商品編輯
   product_edit = async (id, index) => {
     console.log(id);
-    alert(index);
+    // alert(index);
     let newSate = { ...this.state };
     let result = await axios.get(`http://localhost:8000/itemedit/${id}`);
     newSate.dbcarts.item_id = id;
     newSate.productEdit = result.data;
     newSate.productEdit[5].catrs_index = index;
     console.log("productEdit:", newSate.productEdit);
-    // console.log(newSate);
     this.setState(newSate);
   };
 
@@ -405,7 +404,12 @@ class cartPay extends Component {
     // console.log(e.target.dataset.temperatures);
     let newState = { ...this.state };
     newState.productEdit[8].cats_item.item_size = e.target.value;
+
+    newState.productEdit[8].cats_item.item_price = Number(
+      e.target.dataset.products_price
+    );
     this.setState(newState);
+    console.log(newState);
     // console.log(newState);
   };
   //甜度
@@ -488,7 +492,8 @@ class cartPay extends Component {
     newState.dbcarts[index].item_ingredient =
       this.state.productEdit[8].cats_item.item_ingredient;
     newState.dbcarts[index].total_price =
-      this.state.productEdit[8].cats_item.total_price;
+      this.state.productEdit[8].cats_item.item_price +
+      this.state.productEdit[8].cats_item.ingredient_price;
 
     let quantity = 0;
     let sumPrice = 0;
@@ -525,6 +530,7 @@ class cartPay extends Component {
       item_sugar: this.state.productEdit[8].cats_item.item_sugar,
       item_ingredient: this.state.productEdit[8].cats_item.item_ingredient,
       ingredient_price: this.state.productEdit[8].cats_item.ingredient_price,
+      item_price: this.state.productEdit[8].cats_item.item_price,
       total_price: this.state.productEdit[8].cats_item.total_price,
     };
     let config = {
@@ -927,9 +933,6 @@ class cartPay extends Component {
                                                 className="alert alert-warning"
                                                 role="alert"
                                               >
-                                                {/* *脆啵啵球配料冷飲限定口感佳（常溫/溫/熱恕不開放加料
-                                                <br></br>
-                                                *小圓仔配料建議冷/溫飲 */}
                                                 {
                                                   this.state.productEdit[5]
                                                     .brand_note
@@ -983,6 +986,9 @@ class cartPay extends Component {
                                                         value={item.size}
                                                         data-temperatures={
                                                           item.temperatures
+                                                        }
+                                                        data-products_price={
+                                                          item.products_price
                                                         }
                                                         onChange={
                                                           this.size_change
@@ -2281,11 +2287,10 @@ class cartPay extends Component {
 
     newState.dbcarts.forEach((item) => {
       quantity += item.item_quantity;
-      console.log(item.item_price + item.ingredient_price * item.item_quantity);
       sumPrice +=
         (item.item_price + item.ingredient_price) * item.item_quantity;
     });
-    console.log(sumPrice);
+    console.log("sumPrice", sumPrice);
     newState.quantity = quantity;
     newState.sumPrice = sumPrice;
     newState.lastPrice = sumPrice;

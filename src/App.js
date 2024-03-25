@@ -31,7 +31,7 @@ class App extends Component {
             <Route path="/login" component={LogIn} />
             <Route path="/profile" component={Profile} />
             <Route path="/order" component={order} exact />
-            <Route path="/cartlist" component={cartList} exact />
+            <Route path="/cartlist/:id" component={cartList} exact />
             <Route path="/cartPay/:id" component={cartPay} />
             <Route path="/test" component={test} />
             <Route component={Error} />
