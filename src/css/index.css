@@ -54,7 +54,10 @@
 #loginBtn {
     color: #003C95;  
 }
-
+#memberHeadshot{
+    height: 50px;
+    width: 50px;
+}
 #header {
     height: 80px;
 }
@@ -116,15 +119,6 @@
     cursor: pointer;
 }
 
-#memberNavImg {
-    position: absolute;
-    right: 0px;
-    width: 100%;
-    opacity: 0.2;
-    top: 50px;
-    z-index: -1;
-}
-
 #bannerImg{
     position: relative;
     bottom: 4px;
@@ -144,11 +138,32 @@
 
 .rouletteBrand{
     color: #F3B021;
+    font-size: 26px;
 }
 .rouletteProduct{
     color: #F3B021;
+    font-size: 22px;
+}
+/* 滾動條 start */
+#nearbyBranch{
+    height: 2000px;
+    overflow: scroll;
+    -ms-overflow-style: none;
+}
+#nearbyBranch::-webkit-scrollbar {
+    display: none;  
 }
 
+html {
+    overflow: -moz-hidden-unscrollable;
+    height: 100%;
+}
+
+body {
+	height: 100%;
+	overflow: auto;
+}
+/* 滾動條 end */
 
 
 /* footer */
@@ -170,6 +185,9 @@
 }
 
 /* 店家資訊 (右) */
+.branchCard{
+    cursor: pointer;
+}
 .choose_right div.image {
     position: relative;
   }
@@ -251,6 +269,12 @@
     #rouletteArea {
         height: 620px;
     }    
+    .rouletteBrand{
+        font-size: 22px;
+    }
+    .rouletteProduct{
+        font-size: 18px;
+    }
 }
 @media screen and (max-width:1100px) {
     #rouletteArea {
@@ -265,6 +289,12 @@
     .footerText{
         font-size: 18px;
     }
+    .rouletteBrand{
+        font-size: 20px;
+    }
+    .rouletteProduct{
+        font-size: 16px;
+    }
 }
 @media screen and (max-width:992px) {
     .headerText {
@@ -273,6 +303,12 @@
     #rouletteArea {
         height: 470px;
     }    
+    .rouletteBrand{
+        font-size: 16px;
+    }
+    .rouletteProduct{
+        font-size: 14px;
+    }
 }
 @media screen and (max-width:800px) {
     #header {
@@ -280,6 +316,10 @@
     }
     #logo {
         height: 60px;
+    }
+    #memberHeadshot{
+        height: 30px;
+        width: 30px;
     }
     #homeBtn {
         padding: 0;
@@ -304,10 +344,10 @@
         font-size: 12px;
     }
     .rouletteBrand{
-        font-size: 16px;
+        font-size: 14px;
     }
     .rouletteProduct{
-        font-size: 14px;
+        font-size: 12px;
     }
 }
 @media screen and (max-width:650px) {
@@ -345,12 +385,6 @@
     }
     .footerText{
         font-size: 8px;
-    }
-    .rouletteBrand{
-        font-size: 14px;
-    }
-    .rouletteProduct{
-        font-size: 12px;
     }
     #rouletteArea {
         height: 230px;    

@@ -58,6 +58,7 @@ a.a-link:hover {
 .btn-pay {
   border-radius: 33px;
   background-color: #003c95;
+  font-size: 20px;
   color: #ffff;
 }
 .btn-pay:hover {
@@ -69,7 +70,8 @@ a.a-link:hover {
 }
 
 .trash,
-.pencil {
+.pencil,
+.refresh {
   font-size: 24px;
   color: #555;
 }
@@ -97,6 +99,7 @@ hr.hr-line {
 
 .mainproduct-img {
   max-width: 200px;
+  cursor: pointer;
 }
 
 .btn-join {
@@ -160,7 +163,8 @@ hr.hr-line {
 }
 
 .trash3,
-.pen {
+.pen,
+.refresh {
   width: 20px;
 }
 
@@ -170,10 +174,12 @@ hr.hr-line {
 }
 
 .btn-edit,
-.btn-delete {
+.btn-delete,
+.refresh-btn {
   background-color: transparent;
   border: none;
   padding: 10px;
+  color: #333;
 }
 
 .btn-return,
@@ -185,25 +191,22 @@ hr.hr-line {
   padding: 10px;
   margin-top: 15px;
   font-size: 18px;
-  /* font-weight: 600; */
+  text-decoration: none;
+  font-weight: 500;
+  cursor: pointer;
 }
 
 /* 對話盒 */
 .clasImg {
-  width: 80%;
-  /* padding-left: 30px; */
+  min-width: 90%;
 }
 
-.modal-content {
+.modal-content-cart {
   border-color: #f2af21 !important;
   border-width: 8px !important;
-}
-
-.modal-content {
   border-radius: 36px !important;
 }
-
-.row.sizetitle {
+*/ .row.sizetitle {
   flex: auto;
   justify-content: center;
 }
@@ -253,6 +256,8 @@ svg {
   border-bottom: 2px solid #003c95;
   margin-bottom: 30px;
   padding-bottom: 10px;
+  font-weight: 500;
+  color: #333;
 }
 
 .col-6.modaltop {
@@ -349,10 +354,17 @@ svg {
 }
 
 /* 配料按鈕樣式 */
+#ingredient-title {
+  font-weight: bold;
+}
+
 .form-check-input.square[type="checkbox"] {
   border-radius: 50%;
   border-color: #003c95;
   border-width: 1px;
+}
+.warning-hover:hover {
+  color: #fff;
 }
 
 .btn-return,
@@ -490,23 +502,23 @@ input[type="radio"].input_box:checked + label::before {
   padding: 60px 0;
 }
 .text-title-b {
-  font-size: 22px;
+  font-size: 24px;
   font-weight: 600;
   color: #333;
 }
 .text-title {
-  font-size: 20px;
+  font-size: 24px;
   font-weight: 500;
   color: #333;
 }
 .text-des {
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 500;
   color: #333;
 }
 
 .text-des-small {
-  font-size: 16px;
+  font-size: 18px;
   color: #444;
   /* font-weight: 600; */
 }
@@ -528,4 +540,8 @@ input[type="radio"].input_box:checked + label::before {
 }
 .icon-img {
   width: 60px;
+}
+
+#my-id {
+  display: none;
 }

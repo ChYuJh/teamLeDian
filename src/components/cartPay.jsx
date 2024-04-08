@@ -4,6 +4,7 @@ import "bootstrap/dist/js/bootstrap.js";
 import "../css/headerAndFooter.css";
 import "../css/cart.css";
 import { FaRegTrashAlt, FaPencilAlt } from "react-icons/fa";
+import { IoReload } from "react-icons/io5";
 // import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import swal from "sweetalert";
@@ -15,33 +16,29 @@ import { PiCoins } from "react-icons/pi";
 import { GiCancel } from "react-icons/gi";
 import DateTimePicker from "./dateTimePicker";
 import axios from "axios";
-
+import Toast from "react-bootstrap/Toast";
 class cartPay extends Component {
   constructor(props) {
     super(props);
     this.state = {
+      issubmit: false,
+      payMethod: 0,
       size_choose: "",
       selectedDate: "",
       currentStep: 1,
       showPointerItem: false,
       bag_isChecked: false,
       discount_isChecked: false,
+      e_bill_isChecked: false,
       remainingPoints: 20, //剩餘點數
       usePoninter: 0,
       bagQuantity: 0,
-      quantity: 0,
-      sumPrice: 0,
-      lastPrice: 0,
-      payMethod: 1,
-      receipt: 1,
+      e_bill_text: "", //載具文字
+      showToast: false,
+      toastMessage: "",
       dbcarts: [
         {
-          brand_id: "2",
-          branch_name: "",
-          branch_address: "",
-          branch_phone: "",
-          brand_name: "",
-          item_img: "1_5",
+          item_img: "LeDian_LOGO",
           item_ingredient: "",
           item_id: 1,
           item_sugar: "",
@@ -49,11 +46,8 @@ class cartPay extends Component {
           total_price: "",
         },
       ],
-
-      pickupInfo: { personName: "JHEN", personPhone: "0912345432" },
       memo: "",
       uniform: "",
-      vehicle: "",
       productEdit: [
         { size_choose: [] },
         { temperature_choose: [] },
@@ -89,19 +83,35 @@ class cartPay extends Component {
           },
         },
       ],
-
-      productCkeck: {
-        size: "",
-        temperatures: "",
-        sugar: "",
-      },
     };
   }
+
+  // 点击按钮时显示Toast消息
+  handleShowToast = () => {
+    this.setState({ showToast: true });
+
+    // 3 秒后隐藏Toast消息
+    setTimeout(() => {
+      this.setState({ showToast: false });
+    }, 3000);
+  };
+
+  toggleToast = (message) => {
+    this.setState({ toastMessage: message });
+    this.setState((prevState) => ({ showToast: !prevState.showToast }));
+    if (!this.state.showToast) {
+      this.toastTimer = setTimeout(() => {
+        this.setState({ showToast: false });
+      }, 3000);
+    } else {
+      clearTimeout(this.toastTimer);
+    }
+  };
 
   nextStep = () => {
     const { currentStep } = this.state;
     this.setState({ currentStep: currentStep + 1 });
-    console.log(currentStep);
+    // console.log(currentStep);
 
     if (currentStep !== 2) {
       const progressBar = document.getElementById("progressbar");
@@ -112,7 +122,6 @@ class cartPay extends Component {
         steps[currentStep - 1].classList.add("active");
       }
     }
-    console.log(this.state);
   };
 
   previousStep = () => {
@@ -120,9 +129,17 @@ class cartPay extends Component {
     if (currentStep > 1) {
       this.setState({ currentStep: currentStep - 1 });
     }
-    // this.sendMessageToParent();
   };
 
+  //刪除購物車
+  delete_btn = async (id) => {
+    let newState = { ...this.state };
+    this.setState(newState);
+    let url = "http://localhost:8000/cartdelete/" + id;
+    await axios.delete(url);
+  };
+
+  //點數輸入框
   togglePointerItem = () => {
     this.setState((prevState) => ({
       showPointerItem: !prevState.showPointerItem,
@@ -132,10 +149,7 @@ class cartPay extends Component {
     let newState;
     newState = this.state;
     newState.discount_isChecked = !newState.discount_isChecked;
-    console.log(newState);
-    // if(newState.discount_isChecked){
-
-    // }
+    // console.log(newState);
     this.setState(newState);
   };
 
@@ -147,22 +161,39 @@ class cartPay extends Component {
     navigator.clipboard.writeText(copyText.value);
   };
 
-  pointerChange = (e) => {
-    if (e.target.value > this.state.remainingPoints) {
+  pointerCheck = (e) => {
+    let newState = { ...this.state };
+    // newState.usePoninter = e.target.value === "" ? 0 : e.target.value;
+    if (newState.usePoninter > this.state.remainingPoints) {
+      newState.usePoninter = 0;
+      this.setState(newState);
       swal({
         title: "已超過可用點數",
         icon: "warning",
         // buttons: true,
         dangerMode: true,
       });
+
       return;
     }
     //是否超過單筆金額
-    // if(e.target.value > this.state.dbcarts){
+    if (newState.usePoninter > this.state.dbcarts.lastPrice) {
+      swal({
+        title: "已超過單筆金額",
+        icon: "warning",
+        dangerMode: true,
+      });
+      return;
+    } else if (newState.usePoninter === "") {
+      newState.usePoninter = 0;
+      this.setState(newState);
+    }
+  };
 
-    // }
+  //使用點數pointerCheck
+  pointerChange = (e) => {
     let newState = { ...this.state };
-    newState.usePoninter = e.target.value === "" ? 0 : e.target.value;
+    newState.usePoninter = e.target.value;
     newState.lastPrice = newState.sumPrice - newState.usePoninter;
     this.setState(newState);
   };
@@ -180,29 +211,31 @@ class cartPay extends Component {
         num += item.item_quantity;
       });
     } else {
-      newState.lastPrice = newState.lastPrice - newState.bagQuantity * 2;
+      newState.bagPrice = newState.bagQuantity * 2;
+      newState.lastPrice = newState.lastPrice - newState.bagPrice;
       this.setState(newState);
       return;
     }
     newState.bagQuantity = Math.ceil(num / 4);
-    newState.lastPrice = newState.lastPrice + newState.bagQuantity * 2;
+    newState.bagPrice = newState.bagQuantity * 2;
+    newState.lastPrice = newState.lastPrice + newState.bagPrice;
     this.setState(newState);
   };
 
   //取貨人姓名、電話
   name_change = (e) => {
     let newState = { ...this.state };
-    newState.pickupInfo.personName = e.target.value;
+    newState.userinfo.name = e.target.value;
     this.setState(newState);
   };
   name_check = () => {
     let newState = { ...this.state };
-    let rules = new RegExp(/^[^\d_\W]+$/);
+    let rules = new RegExp(/^[\u4e00-\u9fa5a-zA-Z]+$/);
 
-    newState.pickupInfo.personName = rules.test(newState.pickupInfo.personName)
-      ? newState.pickupInfo.personName
+    newState.userinfo.name = rules.test(newState.userinfo.name)
+      ? newState.userinfo.name
       : "";
-    if (!newState.pickupInfo.personName) {
+    if (!newState.userinfo.name) {
       swal({
         title: "請填入正確的姓名",
         icon: "warning",
@@ -212,22 +245,19 @@ class cartPay extends Component {
     }
     this.setState(newState);
   };
-
   phone_change = (e) => {
     let newState = { ...this.state };
-    newState.pickupInfo.personPhone = e.target.value;
+    newState.userinfo.phone = e.target.value;
     this.setState(newState);
   };
   phone_check = () => {
     let newState = { ...this.state };
     let rules = new RegExp(/^09\d{8}/);
 
-    newState.pickupInfo.personPhone = rules.test(
-      newState.pickupInfo.personPhone
-    )
-      ? newState.pickupInfo.personPhone
+    newState.userinfo.phone = rules.test(newState.userinfo.phone)
+      ? newState.userinfo.phone
       : "";
-    if (!newState.pickupInfo.personPhone) {
+    if (!newState.userinfo.phone) {
       swal({
         title: "請填入正確的電話號碼",
         icon: "warning",
@@ -239,10 +269,7 @@ class cartPay extends Component {
   };
 
   name_phone_check = () => {
-    if (
-      this.state.pickupInfo.personName === "" ||
-      this.state.pickupInfo.personPhone === ""
-    ) {
+    if (this.state.userinfo.name === "" || this.state.userinfo.name === "") {
       swal({
         title: "請將取貨人資訊填寫完整",
         icon: "warning",
@@ -261,17 +288,10 @@ class cartPay extends Component {
     this.setState(newState);
   };
 
-  //發票
+  //統編
   uniform_change = (e) => {
     let newState = { ...this.state };
     newState.uniform = e.target.value;
-    this.setState(newState);
-  };
-
-  //統一標號
-  vehicle_change = (e) => {
-    let newState = { ...this.state };
-    newState.vehicle = e.target.value;
     this.setState(newState);
   };
 
@@ -294,7 +314,6 @@ class cartPay extends Component {
   getTimeValue = (time) => {
     let newState = { ...this.state.selectedDate };
     newState.selectedDate = time;
-    // let Month=newState.selectedDate.getMo
     let year = newState.selectedDate.getFullYear();
     let month = (newState.selectedDate.getMonth() + 1)
       .toString()
@@ -310,125 +329,200 @@ class cartPay extends Component {
   //提交訂單
   handleButtonClick = async () => {
     let newSate = { ...this.state };
-    let detailsdata;
-    detailsdata = newSate.dbcarts.map((item) => {
-      return {
-        // orders_id:item.,
-        details_name: item.item_name,
-        details_size: item.item_size,
-        details_sugar: item.item_sugar,
-        details_mperatures: item.item_temperatures,
-        details_ingredient: item.item_ingredient,
-        details_amount: item.total_price,
-        details_quantity: item.item_quantity,
-        details_total: item.total_price * item.item_quantity,
+
+    if (!newSate.issubmit) {
+      newSate.issubmit = true;
+      this.setState(newSate);
+      let detailsdata;
+      detailsdata = newSate.dbcarts.map((item) => {
+        return {
+          details_name: item.item_name,
+          details_size: item.item_size,
+          details_sugar: item.item_sugar,
+          details_mperatures: item.item_temperatures,
+          details_ingredient: item.item_ingredient.replace(/^、/, ""),
+          details_amount: item.total_price,
+          details_quantity: item.item_quantity,
+          details_total: item.total_price * item.item_quantity,
+          updatetime: new Date(),
+          createtime: new Date(),
+        };
+      });
+
+      //datails整理
+      let serverData = {
+        user_id: this.state.user_id,
+        brand_id: this.state.dbcarts[0].brand_id,
+        brand_name: this.state.dbcarts[0].brand_name,
+        branch_name: this.state.dbcarts[0].branch_name,
+        orders_total: this.state.lastPrice,
+        orders_bag: this.state.bag_isChecked ? 1 : 0,
+        orders_bag_num: this.state.bagQuantity,
+        usePoninter: Number(this.state.usePoninter),
+        terms_of_payment: Number(this.state.payMethod) ? "Line Pay" : "現金",
+        invoicing_method: this.state.e_bill_text
+          ? `載具-${this.state.e_bill_text}`
+          : "紙本發票",
+        orders_pick_up: this.state.pickupTime,
+        updatedpoints: 0,
+        orders_status: 0,
+        payment_status: this.state.payMethod ? 1 : 0,
         updatetime: new Date(),
         createtime: new Date(),
+        details: detailsdata,
       };
-    });
+      let config = {
+        headers: {
+          "content-type": "application/json",
+        },
+      };
+      //現金交易
+      console.log(serverData);
+      if (serverData.terms_of_payment === "現金") {
+        this.nextStep();
+        await axios
+          .post(
+            "http://localhost:8000/cartcashpay",
+            JSON.stringify(serverData),
+            config
+          )
+          .then(async () => {
+            //刪除以結帳的購物車
+            this.delete_btn(newSate.dbcarts[0].cart_id);
 
-    //datails迴圈整理
-    let serverData = {
-      user_id: 1,
-      branch_id: 1,
-      orders_total: this.state.lastPrice,
-      orders_bag: this.state.bag_isChecked ? 1 : 0,
-      orders_bag_num: this.state.bagQuantity,
-      usePoninter: Number(this.state.usePoninter),
-      terms_of_payment: Number(this.state.payMethod),
-      invoicing_method: Number(this.state.vehicle),
-      orders_pick_up: this.state.pickupTime,
-      orders_status: 1,
-      payment_status: Number(this.state.payMethod) === 1 ? 1 : 2,
-      updatetime: new Date(),
-      createtime: new Date(),
-      details: detailsdata,
-    };
-    this.nextStep();
-    // console.log("serverData:", serverData);
-    let config = {
-      headers: {
-        "content-type": "application/json",
-      },
-    };
-    console.log(serverData);
-    await axios.post(
-      "http://localhost:8000/cartPay",
-      JSON.stringify(serverData),
-      config
-    );
+            //取得localStorage的userid
+            let userdata = localStorage.getItem("userdata");
+            userdata = JSON.parse(userdata);
+            let user_id = userdata.user_id;
+            console.log(user_id);
 
-    //   // //串接linepay
-    // await axios.post(
-    //   "http://localhost:8000/test0231/783743",
-    //   JSON.stringify(serverData),
-    //   config
-    // );
-    // };
+            let updatepoints =
+              this.state.remainingPoints - this.state.usePoninter;
+            console.log("updatepoints", updatepoints);
+
+            let serverData = { updatepoints: updatepoints };
+
+            //更新user點數
+            await axios
+              .patch(`http://localhost:8000/user/${user_id}`, serverData)
+              .then(() => {
+                console.log("更新點數成功");
+              });
+          });
+      }
+      if (serverData.terms_of_payment === "Line Pay") {
+        //LINEPAY 串接
+        this.handleShowToast();
+        await axios
+          .post(
+            "http://localhost:8000/cartlinepay",
+            JSON.stringify(serverData),
+            config
+          )
+          //刪除購物車
+          .then(async (res) => {
+            //   console.log(res.data);
+            //跳轉line pay
+            window.location.replace(res.data);
+            //刪除以結帳的購物車
+            this.delete_btn(newSate.dbcarts[0].cart_id);
+
+            //取得localStorage的userid
+            let userdata = localStorage.getItem("userdata");
+            userdata = JSON.parse(userdata);
+            let user_id = userdata.user_id;
+            console.log(user_id);
+
+            let updatepoints =
+              this.state.remainingPoints - this.state.usePoninter;
+            console.log("updatepoints", updatepoints);
+
+            let serverData = { updatepoints: updatepoints };
+
+            //更新user點數
+            await axios
+              .patch(`http://localhost:8000/user/${user_id}`, serverData)
+              .then(() => {
+                console.log("更新點數成功");
+              });
+          });
+      }
+    }
   };
 
   ///訂單確認
   //付款方式
   payMethod_change = (e) => {
     let newSate = { ...this.state };
-    // console.log(newSate);
     newSate.payMethod = Number(e.target.value);
-    // console.log(newSate.payMethod);
+    console.log(e.target.value);
     this.setState(newSate);
-    // console.log(this.state);
+  };
+
+  //載具
+  e_bill_change = (e) => {
+    let newState = { ...this.state };
+    newState.e_bill_text = e.target.value;
+    this.setState(newState);
   };
 
   //發票
-  receipt_change = (e) => {
+  bill_change = (e) => {
     let newSate = { ...this.state };
-    newSate.receipt = e.target.value;
+    newSate.invoicing_method = Number(e.target.value);
+    if (newSate.invoicing_method) {
+      newSate.e_bill_isChecked = true;
+      newSate.e_bill_text = newSate.userinfo.barcode;
+    } else {
+      newSate.e_bill_isChecked = false;
+      newSate.e_bill_text = "";
+    }
     this.setState(newSate);
-    // console.log(this.state.receipt);
   };
 
-  //商品編輯
+  //取得原本商品內容編輯
   product_edit = async (id, index) => {
-    console.log(id);
-    // alert(index);
-    let newSate = { ...this.state };
+    let newState = { ...this.state };
     let result = await axios.get(`http://localhost:8000/itemedit/${id}`);
-    newSate.dbcarts.item_id = id;
-    newSate.productEdit = result.data;
-    newSate.productEdit[5].catrs_index = index;
-    console.log("productEdit:", newSate.productEdit);
-    this.setState(newSate);
+    newState.dbcarts.item_id = id;
+    newState.productEdit = result.data;
+    newState.productEdit[5].catrs_index = index;
+    if (newState.productEdit[7].product.product_img === "無") {
+      newState.productEdit[7].product.product_img = "LeDian_LOGO";
+    }
+
+    console.log("productEdit:", newState.productEdit);
+    this.setState(newState);
   };
 
   //尺寸
   size_change = (e) => {
-    // console.log(e.target.dataset.temperatures);
     let newState = { ...this.state };
     newState.productEdit[8].cats_item.item_size = e.target.value;
 
     newState.productEdit[8].cats_item.item_price = Number(
       e.target.dataset.products_price
     );
+    newState.productEdit[8].cats_item.total_price =
+      newState.productEdit[8].cats_item.item_price +
+      newState.productEdit[8].cats_item.ingredient_price;
     this.setState(newState);
     console.log(newState);
-    // console.log(newState);
   };
   //甜度
   sugar_change = (e) => {
-    // console.log(e.target.value);
     let newState = { ...this.state };
     newState.productEdit[8].cats_item.item_sugar = e.target.value;
     this.setState(newState);
   };
   //溫度
   temperatures_change = (e) => {
-    // console.log(e.target.value);
     let newState = { ...this.state };
     newState.productEdit[8].cats_item.item_temperatures = e.target.value;
     this.setState(newState);
   };
   //配料
   ingredient_change = (e) => {
-    // console.log(e.target.checked);
     let newState = { ...this.state };
     let ingredient_price = Number(e.target.dataset.price);
     if (e.target.checked) {
@@ -441,7 +535,6 @@ class cartPay extends Component {
       newState.productEdit[8].cats_item.total_price =
         newState.productEdit[8].cats_item.item_price +
         newState.productEdit[8].cats_item.ingredient_price;
-
       this.setState(newState);
     } else {
       let removedIngredient = e.target.value;
@@ -459,6 +552,7 @@ class cartPay extends Component {
         newState.productEdit[8].cats_item.ingredient_price;
       this.setState(newState);
     }
+    console.log(this.state);
   };
 
   //數量增加
@@ -479,71 +573,82 @@ class cartPay extends Component {
   };
 
   update_cart = async (index) => {
-    alert("更新" + index);
     let newState = { ...this.state };
-
     //更新畫面
-    newState.dbcarts[index].item_quantity =
-      this.state.productEdit[8].cats_item.item_quantity;
-    newState.dbcarts[index].item_size =
-      this.state.productEdit[8].cats_item.item_size;
-    newState.dbcarts[index].item_sugar =
-      this.state.productEdit[8].cats_item.item_sugar;
-    newState.dbcarts[index].item_ingredient =
-      this.state.productEdit[8].cats_item.item_ingredient;
+    let updata = [
+      "item_quantity",
+      "item_size",
+      "item_sugar",
+      "ingredient_price",
+      "item_ingredient",
+    ];
+    //更新
+    updata.forEach(
+      (element) =>
+        (newState.dbcarts[index][element] =
+          this.state.productEdit[8].cats_item[element])
+    );
     newState.dbcarts[index].total_price =
       this.state.productEdit[8].cats_item.item_price +
       this.state.productEdit[8].cats_item.ingredient_price;
-
-    let quantity = 0;
-    let sumPrice = 0;
-    newState.dbcarts.forEach((item) => {
-      console.log("item", item);
-      quantity += Number(item.item_quantity);
-      sumPrice += item.total_price * item.item_quantity;
-    });
-    console.log(quantity);
-
-    newState.quantity = quantity;
-    newState.sumPrice = sumPrice;
-    newState.lastPrice = sumPrice;
-
-    console.log("new", newState);
     this.setState(newState);
-
-    let item_sum = 0;
-    let price_sum = 0;
-    newState.dbcarts.forEach((item) => {
-      item_sum += item.item_quantity;
-      price_sum += item.total_price * item.item_quantity;
-    });
-    console.log(item_sum);
-    newState.quantity = item_sum;
-    newState.sumPrice = price_sum;
-    newState.lastPrice =
-      price_sum - this.state.usePoninter + this.state.bagQuantity * 2;
-
-    //寫入資料庫
     let serverData = {
-      item_quantity: this.state.productEdit[8].cats_item.item_quantity,
-      item_size: this.state.productEdit[8].cats_item.item_size,
-      item_sugar: this.state.productEdit[8].cats_item.item_sugar,
-      item_ingredient: this.state.productEdit[8].cats_item.item_ingredient,
-      ingredient_price: this.state.productEdit[8].cats_item.ingredient_price,
-      item_price: this.state.productEdit[8].cats_item.item_price,
-      total_price: this.state.productEdit[8].cats_item.total_price,
+      item_quantity: this.state.dbcarts[index].item_quantity,
+      item_size: this.state.dbcarts[index].item_size,
+      item_sugar: this.state.dbcarts[index].item_sugar,
+      item_price: this.state.dbcarts[index].item_price,
+      ingredient_price: this.state.dbcarts[index].ingredient_price,
+      item_ingredient: this.state.dbcarts[index].item_ingredient.replace(
+        /^、/,
+        ""
+      ),
+      total_price: this.state.dbcarts[index].total_price,
     };
+    console.log(serverData);
     let config = {
       headers: {
         "content-type": "application/json",
       },
     };
-    console.log(this.state.dbcarts[index].item_id);
-    await axios.patch(
-      `http://localhost:8000/itemedit/${this.state.dbcarts[index].item_id}`,
-      serverData,
-      config
-    );
+    await axios
+      .patch(
+        `http://localhost:8000/itemedit/${this.state.dbcarts[index].item_id}`,
+        serverData,
+        config
+      )
+      .then(async () => {
+        //撈取購物車
+        let result = await axios.get(
+          `http://localhost:8000/cartPay/${this.props.match.params.id}`
+        );
+        newState.dbcarts = result.data;
+        let quantity = 0; //飲料數量
+        let sumPrice = 0; //加總價格
+        console.log("dbcarts:", newState.dbcarts);
+        if (newState.dbcarts[0].item_img === "無") {
+          newState.dbcarts[0].item_img = "LeDian_LOGO";
+        }
+        newState.dbcarts.forEach((item) => {
+          quantity += item.item_quantity;
+          sumPrice += item.total_price * item.item_quantity;
+        });
+
+        let num = 0;
+        if (newState.bag_isChecked) {
+          newState.dbcarts.forEach((item) => {
+            num += item.item_quantity;
+          });
+          newState.bagQuantity = Math.ceil(num / 4);
+        }
+
+        newState.quantity = quantity;
+        newState.sumPrice = sumPrice;
+        newState.bagPrice = newState.bagQuantity * 2;
+        newState.lastPrice =
+          sumPrice - newState.usePoninter + newState.bagPrice;
+
+        this.setState(newState);
+      });
   };
 
   //刪除商品
@@ -552,33 +657,62 @@ class cartPay extends Component {
     console.log(index);
     let newState = { ...this.state };
     if (newState.dbcarts.length === 1) {
-      alert("已無法再減少商品了");
+      swal({
+        title: "已無法再減少商品了",
+        icon: "warning",
+        dangerMode: true,
+      });
       return;
     }
-    newState.dbcarts.splice(index, 1);
-    let quantity = 0;
-    let sumPrice = 0;
+
+    const result = await swal({
+      title: "確定刪除商品?",
+      icon: "warning",
+      buttons: true,
+      dangerMode: true,
+    });
+    if (result) {
+      await axios
+        .delete("http://localhost:8000/itemdelete/" + itemid)
+        .then(async () => {
+          this.refresh();
+        });
+    } else {
+      return;
+    }
+  };
+
+  //重新刷新
+  refresh = async () => {
+    let newState = { ...this.state };
+    //撈取購物車
+    let result = await axios.get(
+      `http://localhost:8000/cartPay/${this.props.match.params.id}`
+    );
+    newState.dbcarts = result.data;
+    let quantity = 0; //飲料數量
+    let sumPrice = 0; //加總價格
     newState.dbcarts.forEach((item) => {
-      console.log("item", item);
-      quantity += Number(item.item_quantity);
+      quantity += item.item_quantity;
       sumPrice += item.total_price * item.item_quantity;
     });
+
+    let num = 0;
+    if (newState.bag_isChecked) {
+      newState.dbcarts.forEach((item) => {
+        num += item.item_quantity;
+      });
+      newState.bagQuantity = Math.ceil(num / 4);
+    }
+
     newState.quantity = quantity;
     newState.sumPrice = sumPrice;
-    newState.lastPrice = sumPrice;
-    let item_sum = 0;
-    let price_sum = 0;
-    newState.dbcarts.forEach((item) => {
-      item_sum += item.item_quantity;
-      price_sum += item.total_price * item.item_quantity;
-    });
-    newState.quantity = item_sum;
-    newState.sumPrice = price_sum;
-    newState.lastPrice =
-      price_sum - this.state.usePoninter + this.state.bagQuantity * 2;
+    newState.bagPrice = newState.bagQuantity * 2;
+    newState.lastPrice = sumPrice - newState.usePoninter + newState.bagPrice;
+
     this.setState(newState);
-    await axios.delete("http://localhost:8000/itemdelete/" + itemid);
   };
+
   render() {
     const { currentStep } = this.state;
     return (
@@ -613,7 +747,10 @@ class cartPay extends Component {
                 alt="logo"
               ></img>
             </h4>
-            <h4 className="my-auto p-0 btn headerText menuBtn d-flex align-items-center justify-content-center">
+            <h4
+              className="my-auto p-0 btn headerText menuBtn d-flex align-items-center justify-content-center"
+              onClick={this.cartMenuClick}
+            >
               <HiOutlineShoppingBag className="fs-4" />
               購物車
             </h4>
@@ -647,7 +784,30 @@ class cartPay extends Component {
           </div>
 
           <div className="d-flex me-2 align-items-center">
-            {this.loginCheck()}
+            {this.state.userdata ? (
+              <h4
+                id="loginBtn"
+                className="my-auto btn headerText text-nowrap"
+                onClick={this.toggleMemberNav}
+              >
+                <img
+                  id="memberHeadshot"
+                  src={`/img/users/${this.state.userImg}`}
+                  alt="memberHeadshot"
+                  className="img-fluid my-auto mx-1 rounded-circle border"
+                />
+                會員專區▼
+              </h4>
+            ) : (
+              <h4
+                id="loginBtn"
+                className="my-auto btn headerText align-self-center"
+                onClick={this.toggleMemberNav}
+              >
+                登入/註冊
+              </h4>
+            )}
+
             <div id="memberNav" className="collapse">
               <div className="p-2">
                 <h4
@@ -668,6 +828,34 @@ class cartPay extends Component {
               </div>
             </div>
           </div>
+        </div>
+        <div
+          id="menuNav"
+          className="menuNav d-flex flex-column align-items-center"
+        >
+          <h4
+            className="menuText my-3 mainColor border-bottom border-secondary"
+            onClick={this.cartMenuClick}
+          >
+            <HiOutlineShoppingBag className="fs-4" />
+            購物車
+          </h4>
+          <h4
+            className="menuText my-3 mainColor border-bottom border-secondary"
+            onClick={() => {
+              window.location = "/brand";
+            }}
+          >
+            <PiMedal className="fs-4" />
+            品牌專區
+          </h4>
+          <h4
+            className="menuText my-3 mainColor border-bottom border-secondary"
+            onClick={this.pointinfoShow}
+          >
+            <PiCoins className="fs-4" />
+            集點資訊
+          </h4>
         </div>
 
         <div className="body-bg">
@@ -708,6 +896,9 @@ class cartPay extends Component {
                                 className="mainproduct-img"
                                 src={`/img/mainproduct/${this.state.dbcarts[0].brand_id}.png`}
                                 alt="mainproduct-img"
+                                onClick={() => {
+                                  window.location = `http://localhost:3000/order/${this.state.dbcarts[0].branch_id}/${this.props.match.params.id}/${this.state.user_id}`;
+                                }}
                               />
                             </div>
                             <div className="col-8 col-md-5">
@@ -731,7 +922,7 @@ class cartPay extends Component {
                               >
                                 <img
                                   className="icon-join"
-                                  src="/img/icon/add-friend 1.png"
+                                  src="/img/icon/addjoin.png"
                                   alt="add-friend"
                                 />
                                 <span>揪團</span>
@@ -745,7 +936,7 @@ class cartPay extends Component {
                               aria-hidden="true"
                             >
                               <div className="modal-dialog modal-dialog-centered">
-                                <div className="modal-content join-box">
+                                <div className="modal-content modal-content-cart join-box">
                                   <div className="modal-header d-flex justify-content-center pb-0 border-0">
                                     <h5
                                       className="modal-title text-title-b"
@@ -762,15 +953,13 @@ class cartPay extends Component {
                                           className="text-des p-2 border-0 join-box-input"
                                           type="text"
                                           readOnly
-                                          value={`http://localhost:3000/cartPay/${this.props.match.params.id}`}
-                                          onChange={this.change_test}
+                                          value={`http://localhost:3000/order/${this.state.dbcarts[0].branch_id}/${this.props.match.params.id}/${this.state.user_id}`}
                                         />
                                       </div>
                                       <div className="col-12 text-center my-3">
                                         <button
                                           type="button"
                                           className="btn-continue text-title p-3"
-                                          // onClick="linkShare()"
                                         >
                                           揪團分享！ 複製連結
                                         </button>
@@ -778,7 +967,9 @@ class cartPay extends Component {
                                       <div className="col-12 mt-3">
                                         <div className="row">
                                           <div className="col-6 pe-0 d-flex justify-content-end">
-                                            <QRCodeCanvas value="https://order.nidin.shop/gb/men" />
+                                            <QRCodeCanvas
+                                              value={`http://localhost:3000/order/${this.state.dbcarts[0].branch_id}/${this.props.match.params.id}/${this.state.user_id}`}
+                                            />
                                           </div>
                                           <div className="col-6 px-0">
                                             <img
@@ -821,6 +1012,7 @@ class cartPay extends Component {
                             {this.state.dbcarts.map((item, i) => {
                               return (
                                 <div className="col mt-3" key={i}>
+                                  <h3 className="text-des">{item.user_name}</h3>
                                   <div className="row d-flex align-items-center">
                                     <div className="col-md-3 col-6 text-end">
                                       <img
@@ -837,14 +1029,7 @@ class cartPay extends Component {
                                         {item.item_temperatures}/
                                         {item.item_sugar}
                                       </p>
-                                      <p>
-                                        {item.item_ingredient !== ""
-                                          ? item.item_ingredient.replace(
-                                              "、",
-                                              "/"
-                                            )
-                                          : ""}
-                                      </p>
+                                      <p>{item.item_ingredient}</p>
                                     </div>
                                     <div className="col">
                                       <div className="row d-flex align-items-end justify-content-center">
@@ -892,6 +1077,15 @@ class cartPay extends Component {
                               );
                             })}
                           </div>
+                          <div className="col-12 d-flex justify-content-end">
+                            <button
+                              onClick={this.refresh}
+                              className="refresh-btn "
+                              type="button"
+                            >
+                              <IoReload className="refresh" /> &nbsp; 重新刷新
+                            </button>
+                          </div>
 
                           {/* 對話盒Modal */}
                           <div
@@ -902,32 +1096,33 @@ class cartPay extends Component {
                             aria-hidden="true"
                           >
                             <div className="modal-dialog modal-lg ">
-                              <div className="modal-content">
+                              <div className="modal-content modal-content-cart">
                                 <div className="modal-body">
-                                  <div className="modal-body">
-                                    <div className="container-fluid">
-                                      <div className="row">
-                                        <div className="col-6 modaltop">
-                                          <h3 className="modalTitle">
-                                            {
-                                              this.state.productEdit[7].product
-                                                .product_name
-                                            }
-                                          </h3>
-                                        </div>
-                                        <div className="col-6 modaltop"></div>
+                                  <div className="container-fluid">
+                                    <div className="row">
+                                      <div className="col-6 modaltop">
+                                        <h3 className="modalTitle">
+                                          {
+                                            this.state.productEdit[7].product
+                                              .product_name
+                                          }
+                                        </h3>
                                       </div>
-                                      <div className="row">
-                                        <div className="col-md-5">
-                                          {/* 左側上方圖片 */}
-                                          <div className="row">
-                                            <div className="col-12">
-                                              <img
-                                                src={`/img/class/${this.state.productEdit[7].product.product_img}.png`}
-                                                className="clasImg"
-                                                alt="productimg"
-                                              ></img>
-                                            </div>
+                                      <div className="col-6 modaltop"></div>
+                                    </div>
+                                    <div className="row">
+                                      <div className="col-md-5">
+                                        {/* 左側上方圖片 */}
+                                        <div className="row">
+                                          <div className="col-12  d-flex justify-content-center">
+                                            <img
+                                              src={`/img/class/${this.state.productEdit[7].product.product_img}.png`}
+                                              className="clasImg"
+                                              alt="productimg"
+                                            ></img>
+                                          </div>
+                                          {this.state.productEdit[5]
+                                            .brand_note !== "" && (
                                             <div className="col-12 Text">
                                               <div
                                                 className="alert alert-warning"
@@ -939,346 +1134,239 @@ class cartPay extends Component {
                                                 }
                                               </div>
                                             </div>
-                                          </div>
+                                          )}
                                         </div>
-                                        <div className="col-md-7 modalRight">
-                                          {/* 右側尺寸 */}
-                                          <div className="row sizetitle">
-                                            <div className="col text">
-                                              <svg
-                                                xmlns="http://www.w3.org/2000/svg"
-                                                width="16"
-                                                height="16"
-                                                fill="currentColor"
-                                                className="bi bi-star-fill"
-                                                viewBox="0 0 16 16"
-                                              >
-                                                <path d="M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L7.538.792c.197-.39.73-.39.927 0l2.184 4.327 4.898.696c.441.062.612.636.282.95l-3.522 3.356.83 4.73c.078.443-.36.79-.746.592L8 13.187l-4.389 2.256z" />
-                                              </svg>
-                                              尺寸
-                                            </div>
-                                            <div className="col-4"></div>
-                                            <div className="col-4"></div>
+                                      </div>
+                                      <div className="col-md-7 modalRight">
+                                        {/* 右側尺寸 */}
+                                        <div className="row sizetitle">
+                                          <div
+                                            className="col text text-des"
+                                            id="ingredient-title"
+                                          >
+                                            <svg
+                                              xmlns="http://www.w3.org/2000/svg"
+                                              width="16"
+                                              height="16"
+                                              fill="currentColor"
+                                              className="bi bi-star-fill"
+                                              viewBox="0 0 16 16"
+                                            >
+                                              <path d="M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L7.538.792c.197-.39.73-.39.927 0l2.184 4.327 4.898.696c.441.062.612.636.282.95l-3.522 3.356.83 4.73c.078.443-.36.79-.746.592L8 13.187l-4.389 2.256z" />
+                                            </svg>
+                                            尺寸
                                           </div>
-                                          <div className="row sizecheck">
-                                            {/* 尺寸選項 */}
-                                            {this.state.productEdit[0].size_choose.map(
-                                              (item, i) => {
-                                                if (item.size) {
-                                                  if (
-                                                    item.size ===
-                                                    this.state.productEdit[8]
-                                                      .cats_item.item_size
-                                                  ) {
-                                                    this.state.productEdit[8].cats_item.item_temperatures_range =
-                                                      item.temperatures;
-                                                  }
+                                          {/* <div className="col-4"></div>
+                                            <div className="col-4"></div> */}
+                                        </div>
+                                        <div className="row sizecheck">
+                                          {/* 尺寸選項 */}
+                                          {this.state.productEdit[0].size_choose.map(
+                                            (item, i) => {
+                                              if (item.size) {
+                                                if (
+                                                  item.size ===
+                                                  this.state.productEdit[8]
+                                                    .cats_item.item_size
+                                                ) {
+                                                  this.state.productEdit[8].cats_item.item_temperatures_range =
+                                                    item.temperatures;
+                                                }
+                                                return (
+                                                  <div
+                                                    className="col-4 form-check"
+                                                    key={i}
+                                                  >
+                                                    <input
+                                                      className="form-check-input square text-des"
+                                                      type="radio"
+                                                      name="size"
+                                                      id="medium"
+                                                      value={item.size}
+                                                      data-temperatures={
+                                                        item.temperatures
+                                                      }
+                                                      data-products_price={
+                                                        item.products_price
+                                                      }
+                                                      onChange={
+                                                        this.size_change
+                                                      }
+                                                      checked={
+                                                        item.size ===
+                                                        this.state
+                                                          .productEdit[8]
+                                                          .cats_item.item_size
+                                                          ? "checked"
+                                                          : ""
+                                                      }
+                                                    ></input>
+                                                    <label
+                                                      className="form-check-label text-des"
+                                                      htmlFor="medium"
+                                                    >
+                                                      &nbsp;{item.size}
+                                                    </label>
+                                                  </div>
+                                                );
+                                              } else {
+                                                return null;
+                                              }
+                                            }
+                                          )}
+                                        </div>
+
+                                        <div className="row temperaturetitle">
+                                          {/* 溫度 */}
+                                          <div
+                                            className="col text text-des"
+                                            id="ingredient-title"
+                                          >
+                                            <svg
+                                              xmlns="http://www.w3.org/2000/svg"
+                                              width="16"
+                                              height="16"
+                                              fill="currentColor"
+                                              className="bi bi-star-fill"
+                                              viewBox="0 0 16 16"
+                                            >
+                                              <path d="M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L7.538.792c.197-.39.73-.39.927 0l2.184 4.327 4.898.696c.441.062.612.636.282.95l-3.522 3.356.83 4.73c.078.443-.36.79-.746.592L8 13.187l-4.389 2.256z" />
+                                            </svg>
+                                            溫度
+                                          </div>
+                                          {/* <div className="col-4"></div>
+                                            <div className="col-4"></div> */}
+                                        </div>
+                                        <div className="row temperaturecheck">
+                                          {/* 溫度選項 */}
+                                          {this.state.productEdit[8].cats_item
+                                            .item_temperatures_range === 1 && (
+                                            <React.Fragment>
+                                              {/* a.filter((item)=>  !item.includes('冰') ) */}
+                                              {this.state.productEdit[1].temperature_choose
+                                                .filter(
+                                                  (item) =>
+                                                    !item.includes("溫") &&
+                                                    !item.includes("熱") &&
+                                                    item !== ""
+                                                )
+                                                .map((t, i) => {
                                                   return (
                                                     <div
-                                                      className="col-4 form-check"
+                                                      className="col-md-4 col-6 form-check"
                                                       key={i}
                                                     >
                                                       <input
-                                                        className="form-check-input square"
+                                                        className="form-check-input square text-des"
                                                         type="radio"
-                                                        name="size"
-                                                        id="medium"
-                                                        value={item.size}
-                                                        data-temperatures={
-                                                          item.temperatures
-                                                        }
-                                                        data-products_price={
-                                                          item.products_price
-                                                        }
-                                                        onChange={
-                                                          this.size_change
-                                                        }
+                                                        name="temperature"
+                                                        id="lessIce"
+                                                        value={t}
                                                         checked={
-                                                          item.size ===
+                                                          t ===
                                                           this.state
                                                             .productEdit[8]
-                                                            .cats_item.item_size
+                                                            .cats_item
+                                                            .item_temperatures
                                                             ? "checked"
                                                             : ""
                                                         }
+                                                        onChange={
+                                                          this
+                                                            .temperatures_change
+                                                        }
                                                       ></input>
                                                       <label
-                                                        className="form-check-label"
-                                                        htmlFor="medium"
+                                                        className="form-check-label text-des"
+                                                        htmlFor="flexRadioDefault1"
                                                       >
-                                                        &nbsp;{item.size}
+                                                        &nbsp;{t}
                                                       </label>
                                                     </div>
                                                   );
-                                                } else {
-                                                  return null;
-                                                }
-                                              }
-                                            )}
-                                          </div>
-
-                                          <div className="row temperaturetitle">
-                                            {/* 溫度 */}
-                                            <div className="col text">
-                                              <svg
-                                                xmlns="http://www.w3.org/2000/svg"
-                                                width="16"
-                                                height="16"
-                                                fill="currentColor"
-                                                className="bi bi-star-fill"
-                                                viewBox="0 0 16 16"
-                                              >
-                                                <path d="M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L7.538.792c.197-.39.73-.39.927 0l2.184 4.327 4.898.696c.441.062.612.636.282.95l-3.522 3.356.83 4.73c.078.443-.36.79-.746.592L8 13.187l-4.389 2.256z" />
-                                              </svg>
-                                              溫度
-                                            </div>
-                                            <div className="col-4"></div>
-                                            <div className="col-4"></div>
-                                          </div>
-                                          <div className="row temperaturecheck">
-                                            {/* 溫度選項 */}
-                                            {this.state.productEdit[8].cats_item
-                                              .item_temperatures_range ===
-                                              1 && (
-                                              <React.Fragment>
-                                                {/* a.filter((item)=>  !item.includes('冰') ) */}
-                                                {this.state.productEdit[1].temperature_choose
-                                                  .filter(
-                                                    (item) =>
-                                                      !item.includes("溫") &&
-                                                      !item.includes("熱") &&
-                                                      item !== ""
-                                                  )
-                                                  .map((t, i) => {
-                                                    return (
-                                                      <div
-                                                        className="col-4 form-check"
-                                                        key={i}
+                                                })}
+                                            </React.Fragment>
+                                          )}
+                                          {this.state.productEdit[8].cats_item
+                                            .item_temperatures_range === 2 && (
+                                            <React.Fragment>
+                                              {this.state.productEdit[1].temperature_choose
+                                                .filter(
+                                                  (item) =>
+                                                    !item.includes("冰") &&
+                                                    item !== ""
+                                                )
+                                                .map((t, i) => {
+                                                  return (
+                                                    <div
+                                                      className="col-md-4 col-6 form-check"
+                                                      key={i}
+                                                    >
+                                                      <input
+                                                        className="form-check-input square text-des"
+                                                        type="radio"
+                                                        name="temperature"
+                                                        id="lessIce"
+                                                        value={t}
+                                                        checked={
+                                                          t ===
+                                                          this.state
+                                                            .productEdit[8]
+                                                            .cats_item
+                                                            .item_temperatures
+                                                            ? "checked"
+                                                            : ""
+                                                        }
+                                                        onChange={
+                                                          this
+                                                            .temperatures_change
+                                                        }
+                                                      ></input>
+                                                      <label
+                                                        className="form-check-label text-des"
+                                                        htmlFor="flexRadioDefault1"
                                                       >
-                                                        <input
-                                                          className="form-check-input square"
-                                                          type="radio"
-                                                          name="temperature"
-                                                          id="lessIce"
-                                                          value={t}
-                                                          checked={
-                                                            t ===
-                                                            this.state
-                                                              .productEdit[8]
-                                                              .cats_item
-                                                              .item_temperatures
-                                                              ? "checked"
-                                                              : ""
-                                                          }
-                                                          onChange={
-                                                            this
-                                                              .temperatures_change
-                                                          }
-                                                        ></input>
-                                                        <label
-                                                          className="form-check-label"
-                                                          htmlFor="flexRadioDefault1"
-                                                        >
-                                                          &nbsp;{t}
-                                                        </label>
-                                                      </div>
-                                                    );
-                                                  })}
-                                              </React.Fragment>
-                                            )}
-                                            {this.state.productEdit[8].cats_item
-                                              .item_temperatures_range ===
-                                              2 && (
-                                              <React.Fragment>
-                                                {/* a.filter((item)=>  !item.includes('冰') ) */}
-                                                {this.state.productEdit[1].temperature_choose
-                                                  .filter(
-                                                    (item) =>
-                                                      !item.includes("冰") &&
-                                                      item !== ""
-                                                  )
-                                                  .map((t, i) => {
-                                                    return (
-                                                      <div
-                                                        className="col-4 form-check"
-                                                        key={i}
-                                                      >
-                                                        <input
-                                                          className="form-check-input square"
-                                                          type="radio"
-                                                          name="temperature"
-                                                          id="lessIce"
-                                                          value={t}
-                                                          checked={
-                                                            t ===
-                                                            this.state
-                                                              .productEdit[8]
-                                                              .cats_item
-                                                              .item_temperatures
-                                                              ? "checked"
-                                                              : ""
-                                                          }
-                                                          onChange={
-                                                            this
-                                                              .temperatures_change
-                                                          }
-                                                        ></input>
-                                                        <label
-                                                          className="form-check-label"
-                                                          htmlFor="flexRadioDefault1"
-                                                        >
-                                                          &nbsp;{t}
-                                                        </label>
-                                                      </div>
-                                                    );
-                                                  })}
-                                              </React.Fragment>
-                                            )}
+                                                        &nbsp;{t}
+                                                      </label>
+                                                    </div>
+                                                  );
+                                                })}
+                                            </React.Fragment>
+                                          )}
 
-                                            {this.state.productEdit[8].cats_item
-                                              .item_temperatures_range ===
-                                              3 && (
-                                              <React.Fragment>
-                                                {this.state.productEdit[1].temperature_choose.map(
-                                                  (item, i) => {
-                                                    if (item) {
-                                                      return (
-                                                        <div
-                                                          className="col-4 form-check"
-                                                          key={i}
-                                                        >
-                                                          <input
-                                                            className="form-check-input square"
-                                                            type="radio"
-                                                            name="temperature"
-                                                            id="lessIce"
-                                                            value={item}
-                                                            checked={
-                                                              item ===
-                                                              this.state
-                                                                .productEdit[8]
-                                                                .cats_item
-                                                                .item_temperatures
-                                                                ? "checked"
-                                                                : ""
-                                                            }
-                                                            onChange={
-                                                              this
-                                                                .temperatures_change
-                                                            }
-                                                          ></input>
-                                                          <label
-                                                            className="form-check-label"
-                                                            htmlFor="flexRadioDefault1"
-                                                          >
-                                                            &nbsp;{item}
-                                                          </label>
-                                                        </div>
-                                                      );
-                                                    } else {
-                                                      return null;
-                                                    }
-                                                  }
-                                                )}
-                                              </React.Fragment>
-                                            )}
-
-                                            {this.state.productEdit[8].cats_item
-                                              .item_temperatures_range ===
-                                              4 && (
-                                              <div className="col-4 form-check">
-                                                <input
-                                                  className="form-check-input square"
-                                                  type="radio"
-                                                  name="temperature"
-                                                  id="lessIce"
-                                                  value="固定冷"
-                                                  checked
-                                                  readOnly
-                                                ></input>
-                                                <label
-                                                  className="form-check-label"
-                                                  htmlFor="flexRadioDefault1"
-                                                >
-                                                  &nbsp;{"固定冷"}
-                                                </label>
-                                              </div>
-                                            )}
-
-                                            {this.state.productEdit[8].cats_item
-                                              .item_temperatures_range ===
-                                              5 && (
-                                              <div className="col-4 form-check">
-                                                <input
-                                                  className="form-check-input square"
-                                                  type="radio"
-                                                  name="temperature"
-                                                  id="lessIce"
-                                                  value="固定熱"
-                                                  checked
-                                                  readOnly
-                                                ></input>
-                                                <label
-                                                  className="form-check-label"
-                                                  htmlFor="flexRadioDefault1"
-                                                >
-                                                  &nbsp;{"固定熱"}
-                                                </label>
-                                              </div>
-                                            )}
-                                          </div>
-
-                                          <div className="row sugarinesstitle">
-                                            {/* 甜度 */}
-                                            <div className="col text">
-                                              <svg
-                                                xmlns="http://www.w3.org/2000/svg"
-                                                width="16"
-                                                height="16"
-                                                fill="currentColor"
-                                                className="bi bi-star-fill"
-                                                viewBox="0 0 16 16"
-                                              >
-                                                <path d="M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L7.538.792c.197-.39.73-.39.927 0l2.184 4.327 4.898.696c.441.062.612.636.282.95l-3.522 3.356.83 4.73c.078.443-.36.79-.746.592L8 13.187l-4.389 2.256z" />
-                                              </svg>
-                                              甜度
-                                            </div>
-                                            <div className="col-4"></div>
-                                            <div className="col-4"></div>
-                                          </div>
-                                          <div className="row sugarinesscheck">
-                                            {/* 甜度選項 */}
-                                            {this.state.productEdit[7].product
-                                              .choose_sugar === 1 &&
-                                              this.state.productEdit[2].sugar_choose.map(
+                                          {this.state.productEdit[8].cats_item
+                                            .item_temperatures_range === 3 && (
+                                            <React.Fragment>
+                                              {this.state.productEdit[1].temperature_choose.map(
                                                 (item, i) => {
                                                   if (item) {
                                                     return (
                                                       <div
-                                                        className="col-4 form-check"
+                                                        className="col-md-4 col-6 form-check"
                                                         key={i}
                                                       >
                                                         <input
-                                                          className="form-check-input square"
+                                                          className="form-check-input square text-des"
                                                           type="radio"
-                                                          name="sugariness"
-                                                          id="lessSugar"
+                                                          name="temperature"
+                                                          id="lessIce"
                                                           value={item}
-                                                          onChange={
-                                                            this.sugar_change
-                                                          }
                                                           checked={
                                                             item ===
                                                             this.state
                                                               .productEdit[8]
                                                               .cats_item
-                                                              .item_sugar
+                                                              .item_temperatures
                                                               ? "checked"
                                                               : ""
                                                           }
+                                                          onChange={
+                                                            this
+                                                              .temperatures_change
+                                                          }
                                                         ></input>
                                                         <label
-                                                          className="form-check-label"
+                                                          className="form-check-label text-des"
                                                           htmlFor="flexRadioDefault1"
                                                         >
                                                           &nbsp;{item}
@@ -1290,242 +1378,107 @@ class cartPay extends Component {
                                                   }
                                                 }
                                               )}
+                                            </React.Fragment>
+                                          )}
 
-                                            {this.state.productEdit[7].product
-                                              .choose_sugar === 2 && (
-                                              <div className="col-4 form-check">
-                                                <input
-                                                  className="form-check-input square"
-                                                  type="radio"
-                                                  name="sugariness"
-                                                  id="lessSugar"
-                                                  value="甜度固定"
-                                                ></input>
-                                                <label
-                                                  className="form-check-label"
-                                                  htmlFor="flexRadioDefault1"
-                                                >
-                                                  &nbsp;甜度固定
-                                                </label>
-                                              </div>
-                                            )}
-                                            {this.state.productEdit[7].product
-                                              .choose_sugar === 3 && (
-                                              <div className="col-4 form-check">
-                                                <input
-                                                  className="form-check-input square"
-                                                  type="radio"
-                                                  name="sugariness"
-                                                  id="lessSugar"
-                                                  value="無糖"
-                                                ></input>
-                                                <label
-                                                  className="form-check-label"
-                                                  htmlFor="flexRadioDefault1"
-                                                >
-                                                  &nbsp;無糖
-                                                </label>
-                                              </div>
-                                            )}
-
-                                            {this.state.productEdit[7].product
-                                              .choose_sugar === 4 &&
-                                              this.state.productEdit[2].sugar_choose
-                                                .slice(1)
-                                                .map((item, i) => {
-                                                  if (item) {
-                                                    return (
-                                                      <div
-                                                        className="col-4 form-check"
-                                                        key={i}
-                                                      >
-                                                        <input
-                                                          className="form-check-input square"
-                                                          type="radio"
-                                                          name="sugariness"
-                                                          id="lessSugar"
-                                                          value={item}
-                                                          onChange={
-                                                            this.sugar_change
-                                                          }
-                                                          checked={
-                                                            item ===
-                                                            this.state
-                                                              .productEdit[8]
-                                                              .cats_item
-                                                              .item_sugar
-                                                              ? "checked"
-                                                              : ""
-                                                          }
-                                                        ></input>
-                                                        <label
-                                                          className="form-check-label"
-                                                          htmlFor="flexRadioDefault1"
-                                                        >
-                                                          &nbsp;{item}
-                                                        </label>
-                                                      </div>
-                                                    );
-                                                  } else {
-                                                    return null;
-                                                  }
-                                                })}
-
-                                            {this.state.productEdit[7].product
-                                              .choose_sugar === 5 &&
-                                              this.state.productEdit[2].sugar_choose
-                                                .slice(0, 5)
-                                                .map((item, i) => {
-                                                  if (item) {
-                                                    return (
-                                                      <div
-                                                        className="col-4 form-check"
-                                                        key={i}
-                                                      >
-                                                        <input
-                                                          className="form-check-input square"
-                                                          type="radio"
-                                                          name="sugariness"
-                                                          id="lessSugar"
-                                                          value={item}
-                                                          onChange={
-                                                            this.sugar_change
-                                                          }
-                                                          checked={
-                                                            item ===
-                                                            this.state
-                                                              .productEdit[8]
-                                                              .cats_item
-                                                              .item_sugar
-                                                              ? "checked"
-                                                              : ""
-                                                          }
-                                                        ></input>
-                                                        <label
-                                                          className="form-check-label"
-                                                          htmlFor="flexRadioDefault1"
-                                                        >
-                                                          &nbsp;{item}
-                                                        </label>
-                                                      </div>
-                                                    );
-                                                  } else {
-                                                    return null;
-                                                  }
-                                                })}
-
-                                            {this.state.productEdit[7].product
-                                              .choose_sugar === 6 &&
-                                              this.state.productEdit[2].sugar_choose
-                                                .filter(
-                                                  (item, i) =>
-                                                    i === 4 || i === 6
-                                                )
-                                                .map((item, i) => {
-                                                  if (item) {
-                                                    return (
-                                                      <div
-                                                        className="col-4 form-check"
-                                                        key={i}
-                                                      >
-                                                        <input
-                                                          className="form-check-input square"
-                                                          type="radio"
-                                                          name="sugariness"
-                                                          id="lessSugar"
-                                                          value={item}
-                                                          onChange={
-                                                            this.sugar_change
-                                                          }
-                                                          checked={
-                                                            item ===
-                                                            this.state
-                                                              .productEdit[8]
-                                                              .cats_item
-                                                              .item_sugar
-                                                              ? "checked"
-                                                              : ""
-                                                          }
-                                                        ></input>
-                                                        <label
-                                                          className="form-check-label"
-                                                          htmlFor="flexRadioDefault1"
-                                                        >
-                                                          &nbsp;{item}
-                                                        </label>
-                                                      </div>
-                                                    );
-                                                  } else {
-                                                    return null;
-                                                  }
-                                                })}
-                                          </div>
-                                          <div className="row sugarinesstitle">
-                                            {/* 配料 */}
-                                            <div className="col text">
-                                              <svg
-                                                xmlns="http://www.w3.org/2000/svg"
-                                                width="16"
-                                                height="16"
-                                                fill="currentColor"
-                                                className="bi bi-star-fill"
-                                                viewBox="0 0 16 16"
+                                          {this.state.productEdit[8].cats_item
+                                            .item_temperatures_range === 4 && (
+                                            <div className="col-6 form-check">
+                                              <input
+                                                className="form-check-input square text-des"
+                                                type="radio"
+                                                name="temperature"
+                                                id="lessIce"
+                                                value="固定冷"
+                                                checked
+                                                readOnly
+                                              ></input>
+                                              <label
+                                                className="form-check-label text-des"
+                                                htmlFor="flexRadioDefault1"
                                               >
-                                                <path d="M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L7.538.792c.197-.39.73-.39.927 0l2.184 4.327 4.898.696c.441.062.612.636.282.95l-3.522 3.356.83 4.73c.078.443-.36.79-.746.592L8 13.187l-4.389 2.256z" />
-                                              </svg>
-                                              配料
+                                                &nbsp;{"固定冷"}
+                                              </label>
                                             </div>
-                                            <div className="col-4"></div>
-                                            <div className="col-4"></div>
-                                          </div>
-                                          <div className="row sugarinesscheck">
-                                            {/* 配料選項 */}
+                                          )}
 
-                                            {this.state.productEdit[3].ingredient.map(
+                                          {this.state.productEdit[8].cats_item
+                                            .item_temperatures_range === 5 && (
+                                            <div className="col-6 form-check">
+                                              <input
+                                                className="form-check-input square text-des"
+                                                type="radio"
+                                                name="temperature"
+                                                id="lessIce"
+                                                value="固定熱"
+                                                checked
+                                                readOnly
+                                              ></input>
+                                              <label
+                                                className="form-check-label text-des"
+                                                htmlFor="flexRadioDefault1"
+                                              >
+                                                &nbsp;{"固定熱"}
+                                              </label>
+                                            </div>
+                                          )}
+                                        </div>
+
+                                        <div className="row sugarinesstitle">
+                                          {/* 甜度 */}
+                                          <div
+                                            className="col text text-des"
+                                            id="ingredient-title"
+                                          >
+                                            <svg
+                                              xmlns="http://www.w3.org/2000/svg"
+                                              width="16"
+                                              height="16"
+                                              fill="currentColor"
+                                              className="bi bi-star-fill"
+                                              viewBox="0 0 16 16"
+                                            >
+                                              <path d="M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L7.538.792c.197-.39.73-.39.927 0l2.184 4.327 4.898.696c.441.062.612.636.282.95l-3.522 3.356.83 4.73c.078.443-.36.79-.746.592L8 13.187l-4.389 2.256z" />
+                                            </svg>
+                                            甜度
+                                          </div>
+                                        </div>
+                                        <div className="row sugarinesscheck">
+                                          {/* 甜度選項 */}
+                                          {this.state.productEdit[7].product
+                                            .choose_sugar === 1 &&
+                                            this.state.productEdit[2].sugar_choose.map(
                                               (item, i) => {
-                                                if (item.ingredient_choose) {
-                                                  let item_ingredient_ary =
-                                                    this.state.productEdit[8].cats_item.item_ingredient.split(
-                                                      "、"
-                                                    );
-                                                  // console.log(
-                                                  //   item_ingredient_ary
-                                                  // );
+                                                if (item) {
                                                   return (
                                                     <div
-                                                      className="col-4 form-check"
+                                                      className="col-md-4 col-6 form-check"
                                                       key={i}
                                                     >
                                                       <input
-                                                        className="form-check-input square"
-                                                        type="checkbox"
-                                                        name="ingredients"
-                                                        id="grass"
-                                                        value={
-                                                          item.ingredient_choose
-                                                        }
-                                                        data-price={
-                                                          item.ingredient_price
+                                                        className="form-check-input square text-des"
+                                                        type="radio"
+                                                        name="sugariness"
+                                                        id="lessSugar"
+                                                        value={item}
+                                                        onChange={
+                                                          this.sugar_change
                                                         }
                                                         checked={
-                                                          item_ingredient_ary.includes(
-                                                            item.ingredient_choose
-                                                          )
+                                                          item ===
+                                                          this.state
+                                                            .productEdit[8]
+                                                            .cats_item
+                                                            .item_sugar
                                                             ? "checked"
                                                             : ""
                                                         }
-                                                        onChange={
-                                                          this.ingredient_change
-                                                        }
                                                       ></input>
                                                       <label
-                                                        className="form-check-label"
+                                                        className="form-check-label text-des"
                                                         htmlFor="flexRadioDefault1"
                                                       >
-                                                        &nbsp;
-                                                        {item.ingredient_choose}
-                                                        <span>+</span>
-                                                        {item.ingredient_price}
+                                                        &nbsp;{item}
                                                       </label>
                                                     </div>
                                                   );
@@ -1534,88 +1487,391 @@ class cartPay extends Component {
                                                 }
                                               }
                                             )}
-                                          </div>
+
+                                          {this.state.productEdit[7].product
+                                            .choose_sugar === 2 && (
+                                            <div className="col-6 form-check">
+                                              <input
+                                                className="form-check-input square text-des"
+                                                type="radio"
+                                                name="sugariness"
+                                                id="lessSugar"
+                                                value="甜度固定"
+                                                checked
+                                                readOnly
+                                              ></input>
+                                              <label
+                                                className="form-check-label text-des"
+                                                htmlFor="flexRadioDefault1"
+                                              >
+                                                &nbsp;甜度固定
+                                              </label>
+                                            </div>
+                                          )}
+                                          {this.state.productEdit[7].product
+                                            .choose_sugar === 3 && (
+                                            <div className="col-6 form-check">
+                                              <input
+                                                className="form-check-input square text-des"
+                                                type="radio"
+                                                name="sugariness"
+                                                id="lessSugar"
+                                                value="無糖"
+                                                checked
+                                                readOnly
+                                              ></input>
+                                              <label
+                                                className="form-check-label text-des"
+                                                htmlFor="flexRadioDefault1"
+                                              >
+                                                &nbsp;無糖
+                                              </label>
+                                            </div>
+                                          )}
+
+                                          {this.state.productEdit[7].product
+                                            .choose_sugar === 4 &&
+                                            this.state.productEdit[2].sugar_choose
+                                              .slice(1)
+                                              .map((item, i) => {
+                                                if (item) {
+                                                  return (
+                                                    <div
+                                                      className="col-md-4 col-6 form-check"
+                                                      key={i}
+                                                    >
+                                                      <input
+                                                        className="form-check-input square text-des"
+                                                        type="radio"
+                                                        name="sugariness"
+                                                        id="lessSugar"
+                                                        value={item}
+                                                        onChange={
+                                                          this.sugar_change
+                                                        }
+                                                        checked={
+                                                          item ===
+                                                          this.state
+                                                            .productEdit[8]
+                                                            .cats_item
+                                                            .item_sugar
+                                                            ? "checked"
+                                                            : ""
+                                                        }
+                                                      ></input>
+                                                      <label
+                                                        className="form-check-label text-des"
+                                                        htmlFor="flexRadioDefault1"
+                                                      >
+                                                        &nbsp;{item}
+                                                      </label>
+                                                    </div>
+                                                  );
+                                                } else {
+                                                  return null;
+                                                }
+                                              })}
+
+                                          {this.state.productEdit[7].product
+                                            .choose_sugar === 5 &&
+                                            this.state.productEdit[2].sugar_choose
+                                              .slice(0, 5)
+                                              .map((item, i) => {
+                                                if (item) {
+                                                  return (
+                                                    <div
+                                                      className="col-md-4 col-6 form-check"
+                                                      key={i}
+                                                    >
+                                                      <input
+                                                        className="form-check-input square text-des"
+                                                        type="radio"
+                                                        name="sugariness"
+                                                        id="lessSugar"
+                                                        value={item}
+                                                        onChange={
+                                                          this.sugar_change
+                                                        }
+                                                        checked={
+                                                          item ===
+                                                          this.state
+                                                            .productEdit[8]
+                                                            .cats_item
+                                                            .item_sugar
+                                                            ? "checked"
+                                                            : ""
+                                                        }
+                                                      ></input>
+                                                      <label
+                                                        className="form-check-label text-des"
+                                                        htmlFor="flexRadioDefault1"
+                                                      >
+                                                        &nbsp;{item}
+                                                      </label>
+                                                    </div>
+                                                  );
+                                                } else {
+                                                  return null;
+                                                }
+                                              })}
+
+                                          {this.state.productEdit[7].product
+                                            .choose_sugar === 6 &&
+                                            this.state.productEdit[2].sugar_choose
+                                              .filter(
+                                                (item, i) => i === 4 || i === 6
+                                              )
+                                              .map((item, i) => {
+                                                if (item) {
+                                                  return (
+                                                    <div
+                                                      className="col-md-4 col-6 form-check"
+                                                      key={i}
+                                                    >
+                                                      <input
+                                                        className="form-check-input square text-des"
+                                                        type="radio"
+                                                        name="sugariness"
+                                                        id="lessSugar"
+                                                        value={item}
+                                                        onChange={
+                                                          this.sugar_change
+                                                        }
+                                                        checked={
+                                                          item ===
+                                                          this.state
+                                                            .productEdit[8]
+                                                            .cats_item
+                                                            .item_sugar
+                                                            ? "checked"
+                                                            : ""
+                                                        }
+                                                      ></input>
+                                                      <label
+                                                        className="form-check-label text-des"
+                                                        htmlFor="flexRadioDefault1"
+                                                      >
+                                                        &nbsp;{item}
+                                                      </label>
+                                                    </div>
+                                                  );
+                                                } else {
+                                                  return null;
+                                                }
+                                              })}
+
+                                          {this.state.productEdit[7].product
+                                            .choose_sugar === 7 &&
+                                            this.state.productEdit[2].sugar_choose
+                                              .filter((item) =>
+                                                item.includes("蜜")
+                                              )
+                                              .map((item, i) => {
+                                                if (item) {
+                                                  return (
+                                                    <div
+                                                      className="col-md-4 col-6 form-check"
+                                                      key={i}
+                                                    >
+                                                      <input
+                                                        className="form-check-input square text-des"
+                                                        type="radio"
+                                                        name="sugariness"
+                                                        id="lessSugar"
+                                                        value={item}
+                                                        onChange={
+                                                          this.sugar_change
+                                                        }
+                                                        checked={
+                                                          item ===
+                                                          this.state
+                                                            .productEdit[8]
+                                                            .cats_item
+                                                            .item_sugar
+                                                            ? "checked"
+                                                            : ""
+                                                        }
+                                                      ></input>
+                                                      <label
+                                                        className="form-check-label text-des"
+                                                        htmlFor="flexRadioDefault1"
+                                                      >
+                                                        &nbsp;{item}
+                                                      </label>
+                                                    </div>
+                                                  );
+                                                } else {
+                                                  return null;
+                                                }
+                                              })}
                                         </div>
-                                      </div>
-                                      <div className="row footer">
-                                        <div className="col-6 modaltop  ">
-                                          總金額 :
-                                          {this.state.productEdit[8].cats_item
-                                            .item_price +
-                                            this.state.productEdit[8].cats_item
-                                              .ingredient_price}
-                                          元
-                                        </div>
-                                        <div className="col-6 text-">
-                                          <div className="row price">
-                                            <div className="col-4">
-                                              <button
-                                                type="button"
-                                                className="btn add btn-outline-warning"
-                                                onClick={this.reduce_quantity}
+                                        {this.state.productEdit[7].product
+                                          .choose_ingredient === 1 && (
+                                          <React.Fragment>
+                                            <div className="row sugarinesstitle">
+                                              {/* 配料 */}
+                                              <div
+                                                className="col text text-des"
+                                                id="ingredient-title"
                                               >
                                                 <svg
                                                   xmlns="http://www.w3.org/2000/svg"
                                                   width="16"
                                                   height="16"
                                                   fill="currentColor"
-                                                  className="bi bi-dash-lg"
+                                                  className="bi bi-star-fill"
                                                   viewBox="0 0 16 16"
                                                 >
-                                                  <path
-                                                    fillRule="evenodd"
-                                                    d="M2 8a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11A.5.5 0 0 1 2 8"
-                                                  />
+                                                  <path d="M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L7.538.792c.197-.39.73-.39.927 0l2.184 4.327 4.898.696c.441.062.612.636.282.95l-3.522 3.356.83 4.73c.078.443-.36.79-.746.592L8 13.187l-4.389 2.256z" />
                                                 </svg>
-                                              </button>
-                                            </div>
-                                            <div className="col-4 text-center">
-                                              <div className="price">
-                                                {
-                                                  this.state.productEdit[8]
-                                                    .cats_item.item_quantity
-                                                }
+                                                配料
                                               </div>
                                             </div>
-                                            <div className="col-4 text-center">
-                                              <button
-                                                type="button"
-                                                className="btn add btn-outline-warning"
-                                                onClick={this.add_quantity}
-                                              >
-                                                <svg
-                                                  xmlns="http://www.w3.org/2000/svg"
-                                                  width="16"
-                                                  height="16"
-                                                  fill="currentColor"
-                                                  className="bi bi-plus-lg"
-                                                  viewBox="0 0 16 16"
-                                                >
-                                                  <path
-                                                    fillRule="evenodd"
-                                                    d="M8 2a.5.5 0 0 1 .5.5v5h5a.5.5 0 0 1 0 1h-5v5a.5.5 0 0 1-1 0v-5h-5a.5.5 0 0 1 0-1h5v-5A.5.5 0 0 1 8 2"
-                                                  />
-                                                </svg>
-                                              </button>
+
+                                            <div className="row sugarinesscheck">
+                                              {/* 配料選項 */}
+                                              {this.state.productEdit[3].ingredient.map(
+                                                (item, i) => {
+                                                  if (item.ingredient_choose) {
+                                                    let item_ingredient_ary =
+                                                      this.state.productEdit[8].cats_item.item_ingredient.split(
+                                                        "、"
+                                                      );
+                                                    // console.log(
+                                                    //   item_ingredient_ary
+                                                    // );
+                                                    return (
+                                                      <div
+                                                        className="col-6 form-check"
+                                                        key={i}
+                                                      >
+                                                        <input
+                                                          className="form-check-input square text-des"
+                                                          type="checkbox"
+                                                          name="ingredients"
+                                                          id="grass"
+                                                          value={
+                                                            item.ingredient_choose
+                                                          }
+                                                          data-price={
+                                                            item.ingredient_price
+                                                          }
+                                                          checked={
+                                                            item_ingredient_ary.includes(
+                                                              item.ingredient_choose
+                                                            )
+                                                              ? "checked"
+                                                              : ""
+                                                          }
+                                                          onChange={
+                                                            this
+                                                              .ingredient_change
+                                                          }
+                                                        ></input>
+                                                        <label
+                                                          className="form-check-label text-des "
+                                                          id="ingredient-des"
+                                                          htmlFor="flexRadioDefault1"
+                                                        >
+                                                          &nbsp;
+                                                          {
+                                                            item.ingredient_choose
+                                                          }
+                                                          $
+                                                          {
+                                                            item.ingredient_price
+                                                          }
+                                                        </label>
+                                                      </div>
+                                                    );
+                                                  } else {
+                                                    return null;
+                                                  }
+                                                }
+                                              )}
                                             </div>
+                                          </React.Fragment>
+                                        )}
+                                      </div>
+                                    </div>
+                                    <div className="row footer">
+                                      <div className="col-6 modaltop ">
+                                        總金額：
+                                        {this.state.productEdit[8].cats_item
+                                          .total_price *
+                                          this.state.productEdit[8].cats_item
+                                            .item_quantity}
+                                        元
+                                      </div>
+                                      <div className="col-6 text-">
+                                        <div className="row price">
+                                          <div className="col-4">
+                                            <button
+                                              type="button"
+                                              className="btn add btn-outline-warning"
+                                              onClick={this.reduce_quantity}
+                                            >
+                                              <svg
+                                                xmlns="http://www.w3.org/2000/svg"
+                                                width="16"
+                                                height="16"
+                                                fill="currentColor"
+                                                className="bi bi-dash-lg"
+                                                viewBox="0 0 16 16"
+                                              >
+                                                <path
+                                                  fillRule="evenodd"
+                                                  d="M2 8a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11A.5.5 0 0 1 2 8"
+                                                />
+                                              </svg>
+                                            </button>
+                                          </div>
+                                          <div className="col-4 text-center">
+                                            <div className="price">
+                                              {
+                                                this.state.productEdit[8]
+                                                  .cats_item.item_quantity
+                                              }
+                                            </div>
+                                          </div>
+                                          <div className="col-4 text-center">
+                                            <button
+                                              type="button"
+                                              className="btn add btn-outline-warning"
+                                              onClick={this.add_quantity}
+                                            >
+                                              <svg
+                                                xmlns="http://www.w3.org/2000/svg"
+                                                width="16"
+                                                height="16"
+                                                fill="currentColor"
+                                                className="bi bi-plus-lg"
+                                                viewBox="0 0 16 16"
+                                              >
+                                                <path
+                                                  fillRule="evenodd"
+                                                  d="M8 2a.5.5 0 0 1 .5.5v5h5a.5.5 0 0 1 0 1h-5v5a.5.5 0 0 1-1 0v-5h-5a.5.5 0 0 1 0-1h5v-5A.5.5 0 0 1 8 2"
+                                                />
+                                              </svg>
+                                            </button>
                                           </div>
                                         </div>
                                       </div>
                                     </div>
-                                    <div className="d-grid gap-2 col-8 mx-auto">
-                                      <button
-                                        className="btn btn-outline-warning"
-                                        type="button"
-                                        onClick={() => {
-                                          this.update_cart(
-                                            this.state.productEdit[5]
-                                              .catrs_index
-                                          );
-                                        }}
-                                      >
-                                        加入購物車
-                                      </button>
-                                    </div>
+                                  </div>
+                                  <div className="d-grid gap-2 col-8 mx-auto">
+                                    <button
+                                      className="btn btn-outline-warning warning-hover text-des"
+                                      data-bs-dismiss="modal"
+                                      type="button"
+                                      onClick={() => {
+                                        this.update_cart(
+                                          this.state.productEdit[5].catrs_index
+                                        );
+                                      }}
+                                    >
+                                      加入購物車
+                                    </button>
                                   </div>
                                 </div>
                               </div>
@@ -1647,6 +1903,7 @@ class cartPay extends Component {
                                   type="text"
                                   value={this.state.usePoninter}
                                   onChange={this.pointerChange}
+                                  onBlur={this.pointerCheck}
                                 />
                                 <p className="mt-3 ps-3 text-des star-must mb-0">
                                   可用點數:{this.state.remainingPoints}
@@ -1714,7 +1971,7 @@ class cartPay extends Component {
                               </div>
                               <div className="col text-des text-end star-must">
                                 <p>
-                                  <span>-</span>
+                                  <span>-$</span>
                                   {this.state.usePoninter}
                                 </p>
                               </div>
@@ -1745,7 +2002,12 @@ class cartPay extends Component {
                           </div>
                           <div className="row mt-3">
                             <div className="col d-flex justify-content-between align-items-center">
-                              <a className="btn-return" href="./cart-list.html">
+                              <a
+                                className="btn-return"
+                                onClick={() => {
+                                  window.location = `http://localhost:3000/order/${this.state.dbcarts[0].branch_id}/${this.props.match.params.id}/${this.state.user_id}`;
+                                }}
+                              >
                                 繼續加購
                               </a>
                               <button
@@ -1774,9 +2036,9 @@ class cartPay extends Component {
                                 取貨人姓名<span className="star-must">*</span>
                               </label>
                               <input
-                                className="ms-2 mt-3 form-control input-box"
+                                className="ms-2 mt-3 form-control input-box text-des"
                                 type="text"
-                                value={this.state.pickupInfo.personName}
+                                value={this.state.userinfo.name}
                                 onChange={this.name_change}
                                 onBlur={this.name_check}
                                 maxLength={20}
@@ -1787,9 +2049,9 @@ class cartPay extends Component {
                                 取貨人電話<span className="star-must">*</span>
                               </label>
                               <input
-                                className="ms-2 mt-3 form-control input-box"
+                                className="ms-2 mt-3 form-control input-box text-des"
                                 type="text"
-                                value={this.state.pickupInfo.personPhone}
+                                value={this.state.userinfo.phone}
                                 onChange={this.phone_change}
                                 maxLength={10}
                                 onBlur={this.phone_check}
@@ -1810,7 +2072,7 @@ class cartPay extends Component {
                                 id="cash"
                                 name="pay-method"
                                 defaultChecked
-                                value="1"
+                                value="0"
                                 onChange={this.payMethod_change}
                               />
                               <label htmlFor="cash" className="text-des">
@@ -1828,7 +2090,7 @@ class cartPay extends Component {
                                 type="radio"
                                 name="pay-method"
                                 id="line-pay"
-                                value="2"
+                                value="1"
                                 onChange={this.payMethod_change}
                               />
                               <label htmlFor="line-pay" className="text-des">
@@ -1853,11 +2115,13 @@ class cartPay extends Component {
                               <input
                                 className="ms-2 input_box"
                                 type="radio"
-                                name="receipt"
+                                name="invoice"
                                 id="bill"
-                                defaultChecked
-                                value={1}
-                                onChange={this.receipt_change}
+                                value="0"
+                                onChange={this.bill_change}
+                                defaultChecked={
+                                  this.state.userinfo.barcode ? false : true
+                                }
                               />
                               <label htmlFor="bill" className="text-des">
                                 紙本發票
@@ -1867,22 +2131,30 @@ class cartPay extends Component {
                               <input
                                 className="ms-2 input_box"
                                 type="radio"
-                                id="vehicle"
-                                name="receipt"
-                                value={2}
-                                onChange={this.receipt_change}
+                                name="invoice"
+                                id="e-bill"
+                                value="1"
+                                onChange={this.bill_change}
+                                defaultChecked={
+                                  this.state.userinfo.barcode ? true : false
+                                }
                               />
-                              <label htmlFor="vehicle" className="text-des">
+                              <label htmlFor="e-bill" className="text-des">
                                 載具
                               </label>
                             </div>
-                            <div className="col-10">
-                              <input
-                                className="ms-2 mt-3 form-control input-box"
-                                type="text"
-                                onChange={this.vehicle_change}
-                              />
-                            </div>
+
+                            {this.state.e_bill_isChecked && (
+                              <div className="col-10">
+                                <input
+                                  className="ms-2 mt-3 form-control input-box"
+                                  type="text"
+                                  value={this.state.e_bill_text}
+                                  // readOnly
+                                  onChange={this.e_bill_change}
+                                />
+                              </div>
+                            )}
                           </div>
 
                           <div className="row d-flex justify-content-center mt-5">
@@ -1935,7 +2207,7 @@ class cartPay extends Component {
                                   <span className="small-text p-2">
                                     <img
                                       className="me-2"
-                                      src="/img/icon/exclamation 1.png"
+                                      src="/img/icon/exclamation.png"
                                       alt="icnimg"
                                     />
                                     預計取貨時間會依門市狀況調整
@@ -1963,7 +2235,7 @@ class cartPay extends Component {
                               </div>
                               <div className="col">
                                 <h4 className="text-des">
-                                  {this.state.pickupInfo.personName}
+                                  {this.state.userinfo.name}
                                 </h4>
                               </div>
                               <hr className="mt-2 hr-line" />
@@ -1975,7 +2247,7 @@ class cartPay extends Component {
                               </div>
                               <div className="col">
                                 <h4 className="text-des">
-                                  {this.state.pickupInfo.personPhone}
+                                  {this.state.userinfo.phone}
                                 </h4>
                               </div>
                               <hr className="mt-2 hr-line" />
@@ -2011,9 +2283,7 @@ class cartPay extends Component {
                               </div>
                               <div className="col">
                                 <h4 className="text-des">
-                                  {this.state.payMethod === 1
-                                    ? "現金"
-                                    : "LINE Pay"}
+                                  {this.state.payMethod ? "Line Pay" : "現金"}
                                 </h4>
                               </div>
                               <hr className="mt-2 hr-line" />
@@ -2025,8 +2295,8 @@ class cartPay extends Component {
                               </div>
                               <div className="col">
                                 <h4 className="text-des">
-                                  {this.state.vehicle
-                                    ? `手機載具-${this.state.vehicle}`
+                                  {this.state.e_bill_text
+                                    ? `手機載具-${this.state.e_bill_text}`
                                     : "紙本發票"}
                                 </h4>
                               </div>
@@ -2074,6 +2344,22 @@ class cartPay extends Component {
                                 </button>
                               </div>
                             </div>
+
+                            <Toast
+                              show={this.state.showToast}
+                              onClose={this.toggleToast}
+                              className="custom-toast position-fixed  p-3"
+                            >
+                              <div class="d-flex">
+                                <Toast.Body>送出訂單</Toast.Body>
+                                <button
+                                  type="button"
+                                  class="btn-close me-2 m-auto"
+                                  data-bs-dismiss="toast"
+                                  aria-label="Close"
+                                ></button>
+                              </div>
+                            </Toast>
                           </div>
                         </div>
                       </fieldset>
@@ -2111,7 +2397,12 @@ class cartPay extends Component {
                         </div>
                         <div className="row">
                           <div className="col text-center mt-3 mb-5">
-                            <a className="btn-continue" href="./cartLiist.html">
+                            <a
+                              className="btn-continue"
+                              onClick={() => {
+                                window.location = "/profile";
+                              }}
+                            >
                               關閉
                             </a>
                           </div>
@@ -2242,64 +2533,63 @@ class cartPay extends Component {
     this.setState({});
     window.location = "/index";
   };
-  loginCheck = () => {
+  cartMenuClick = () => {
     const userData = JSON.parse(localStorage.getItem("userdata"));
     if (userData) {
-      const userImg = userData.user_img ? userData.user_img : "LeDian.png";
-      return (
-        <h4
-          id="loginBtn"
-          className="my-auto btn headerText text-nowrap"
-          onClick={this.toggleMemberNav}
-        >
-          <img
-            id="memberHeadshot"
-            src={`/img/users/${userImg}`}
-            alt="memberHeadshot"
-            className="img-fluid my-auto mx-1 rounded-circle border"
-          ></img>
-          會員專區▼
-        </h4>
-      );
+      const userId = userData.user_id;
+      window.location = `/cartlist/${userId}`;
     } else {
-      return (
-        <h4
-          id="loginBtn"
-          className="my-auto btn headerText align-self-center"
-          onClick={this.toggleMemberNav}
-        >
-          登入/註冊▼
-        </h4>
-      );
+      window.location = "/login";
     }
   };
+
   componentDidMount = async () => {
     console.log(this.props.match.params.id);
     let newState = { ...this.state };
+    let userdata = localStorage.getItem("userdata");
+    userdata = JSON.parse(userdata);
+    let user_id = userdata.user_id;
+    newState.user_id = user_id;
+
+    if (userdata) {
+      axios
+        .get(`http://localhost:8000/user/${userdata.user_id}`)
+        .then((response) => {
+          const userImg = response.data.user_img
+            ? response.data.user_img
+            : "LeDian.png";
+          this.setState({ userImg, userdata });
+        })
+        .catch((error) => {
+          console.error("Failed to fetch user data:", error);
+        });
+    }
+
+    //撈取使用者資訊
+    let user = await axios.get(
+      `http://localhost:8000/user/${user_id}` //this.props.match.params.id
+    );
+    newState.userinfo = user.data;
+    newState.e_bill_text = newState.userinfo.barcode;
+    newState.e_bill_isChecked = newState.userinfo.barcode ? true : false;
+    newState.remainingPoints = newState.userinfo.points;
+
+    //撈取購物車
     let result = await axios.get(
       `http://localhost:8000/cartPay/${this.props.match.params.id}`
     );
-    console.log(result);
-    let quantity = 0;
-    let sumPrice = 0;
     newState.dbcarts = result.data;
-    console.log("dbcarts:", newState.dbcarts);
-
+    let quantity = 0; //飲料數量
+    let sumPrice = 0; //加總價格
     newState.dbcarts.forEach((item) => {
       quantity += item.item_quantity;
-      sumPrice +=
-        (item.item_price + item.ingredient_price) * item.item_quantity;
+      sumPrice += item.total_price * item.item_quantity;
     });
-    console.log("sumPrice", sumPrice);
     newState.quantity = quantity;
     newState.sumPrice = sumPrice;
-    newState.lastPrice = sumPrice;
-
+    newState.bagPrice = newState.bagQuantity * 2;
+    newState.lastPrice = sumPrice - newState.usePoninter + newState.bagPrice;
     this.setState(newState);
-    console.log("dbcart", this.state.dbcarts);
   };
 }
 export default cartPay;
-
-// ingredient_price
-//item_ingredient

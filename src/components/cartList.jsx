@@ -8,16 +8,29 @@ import { PiMedal } from "react-icons/pi";
 import { PiCoins } from "react-icons/pi";
 import { GiCancel } from "react-icons/gi";
 import axios from "axios";
+import swal from "sweetalert";
 class cartList extends Component {
   state = { dbData: [{ brand_id: "1" }] };
 
+  //刪除購物車
   delete_btn = async (id, i, e) => {
     e.preventDefault();
-    let newState = { ...this.state };
-    console.log(newState.dbData.splice(i, 1));
-    this.setState(newState);
-    let url = "http://localhost:8000/cartdelete/" + id;
-    await axios.delete(url);
+    const result = await swal({
+      title: "確定刪除購物車?",
+      icon: "warning",
+      buttons: true,
+      dangerMode: true,
+    });
+    if (result) {
+      console.log("hi");
+      let newState = { ...this.state };
+      console.log(newState.dbData.splice(i, 1));
+      this.setState(newState);
+      let url = "http://localhost:8000/cartdelete/" + id;
+      await axios.delete(url);
+    } else {
+      return;
+    }
   };
 
   render() {
@@ -53,7 +66,10 @@ class cartList extends Component {
                 alt="logo"
               ></img>
             </h4>
-            <h4 className="my-auto p-0 btn headerText menuBtn d-flex align-items-center justify-content-center">
+            <h4
+              className="my-auto p-0 btn headerText menuBtn d-flex align-items-center justify-content-center"
+              onClick={this.cartMenuClick}
+            >
               <HiOutlineShoppingBag className="fs-4" />
               購物車
             </h4>
@@ -87,7 +103,30 @@ class cartList extends Component {
           </div>
 
           <div className="d-flex me-2 align-items-center">
-            {this.loginCheck()}
+            {this.state.userdata ? (
+              <h4
+                id="loginBtn"
+                className="my-auto btn headerText text-nowrap"
+                onClick={this.toggleMemberNav}
+              >
+                <img
+                  id="memberHeadshot"
+                  src={`/img/users/${this.state.userImg}`}
+                  alt="memberHeadshot"
+                  className="img-fluid my-auto mx-1 rounded-circle border"
+                />
+                會員專區▼
+              </h4>
+            ) : (
+              <h4
+                id="loginBtn"
+                className="my-auto btn headerText align-self-center"
+                onClick={this.toggleMemberNav}
+              >
+                登入/註冊
+              </h4>
+            )}
+
             <div id="memberNav" className="collapse">
               <div className="p-2">
                 <h4
@@ -109,6 +148,35 @@ class cartList extends Component {
             </div>
           </div>
         </div>
+        <div
+          id="menuNav"
+          className="menuNav d-flex flex-column align-items-center"
+        >
+          <h4
+            className="menuText my-3 mainColor border-bottom border-secondary"
+            onClick={this.cartMenuClick}
+          >
+            <HiOutlineShoppingBag className="fs-4" />
+            購物車
+          </h4>
+          <h4
+            className="menuText my-3 mainColor border-bottom border-secondary"
+            onClick={() => {
+              window.location = "/brand";
+            }}
+          >
+            <PiMedal className="fs-4" />
+            品牌專區
+          </h4>
+          <h4
+            className="menuText my-3 mainColor border-bottom border-secondary"
+            onClick={this.pointinfoShow}
+          >
+            <PiCoins className="fs-4" />
+            集點資訊
+          </h4>
+        </div>
+
         <div className=" body-bg">
           <div className="container">
             <div className="row">
@@ -125,7 +193,7 @@ class cartList extends Component {
                       href={`/cartPay/${cart.cart_id}`}
                     >
                       <div className="row text-end">
-                        <p className="col text-des-small">02/23 20:30</p>
+                        <p className="col text-des-small">{cart.createtime}</p>
                       </div>
                       <div className="row d-flex d-flex align-items-stretch">
                         <div className="col-auto col-3-mb mb-3 mb-md-0 mx-auto">
@@ -281,44 +349,42 @@ class cartList extends Component {
     this.setState({});
     window.location = "/index";
   };
-  loginCheck = () => {
+  cartMenuClick = () => {
     const userData = JSON.parse(localStorage.getItem("userdata"));
     if (userData) {
-      const userImg = userData.user_img ? userData.user_img : "LeDian.png";
-      return (
-        <h4
-          id="loginBtn"
-          className="my-auto btn headerText text-nowrap"
-          onClick={this.toggleMemberNav}
-        >
-          <img
-            id="memberHeadshot"
-            src={`/img/users/${userImg}`}
-            alt="memberHeadshot"
-            className="img-fluid my-auto mx-1 rounded-circle border"
-          ></img>
-          會員專區▼
-        </h4>
-      );
+      const userId = userData.user_id;
+      window.location = `/cartlist/${userId}`;
     } else {
-      return (
-        <h4
-          id="loginBtn"
-          className="my-auto btn headerText align-self-center"
-          onClick={this.toggleMemberNav}
-        >
-          登入/註冊▼
-        </h4>
-      );
+      window.location = "/login";
     }
   };
 
   componentDidMount = async () => {
+    let userdata = localStorage.getItem("userdata");
+    userdata = JSON.parse(userdata);
+    let user_id = userdata.user_id;
     let newState = { ...this.state };
     let result;
-    result = await axios.get("http://localhost:8000/cartlist/1");
+    result = await axios.get(`http://localhost:8000/cartlist/${user_id}`);
 
     newState.dbData = result.data;
+
+    // const userData = JSON.parse(localStorage.getItem("userdata"));
+
+    if (userdata) {
+      axios
+        .get(`http://localhost:8000/user/${userdata.user_id}`)
+        .then((response) => {
+          const userImg = response.data.user_img
+            ? response.data.user_img
+            : "LeDian.png";
+          this.setState({ userImg, userdata });
+        })
+        .catch((error) => {
+          console.error("Failed to fetch user data:", error);
+        });
+    }
+
     this.setState(newState);
     console.log(newState);
   };

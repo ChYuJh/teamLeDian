@@ -5,6 +5,7 @@ import { PiMedal } from "react-icons/pi";
 import { PiCoins } from "react-icons/pi";
 import { GiCancel } from "react-icons/gi";
 import GradeIcon from "@mui/icons-material/Grade";
+import { FaArrowCircleUp } from "react-icons/fa";
 import axios from "axios";
 
 class dian extends Component {
@@ -18,37 +19,86 @@ class dian extends Component {
       selectedNearby: "",
       resultlebrand: [],
       brand: [],
+      branchList: [{}],
+      userImg: null,
     };
   }
 
   componentDidMount() {
-    this.handleScoreChange("4.0");
-
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const userLocation = {
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-        };
-        console.log("User location:", userLocation);
-        this.setState({ userLocation });
-      },
-      (error) => {
-        console.error("Error getting user location:", error);
-      }
-    );
-
-    this.fetchBrandData();
+    this.loadPageData();
   }
+
+  componentDidUpdate(prevProps) {
+    if (this.props.location.pathname !== prevProps.location.pathname) {
+      this.loadPageData();
+    }
+  }
+
+  loadPageData = async (shouldReloadData = true) => {
+    try {
+      const pathname = this.props.location.pathname;
+
+      if (pathname === "/nearby") {
+        await this.handleNearbyChange("nearby");
+      } else if (pathname.startsWith("/option")) {
+        const selectedOption = pathname.split("/")[2];
+        await this.handleOptionChange(selectedOption);
+      } else if (pathname.startsWith("/score")) {
+        const selectedScore = pathname.split("/")[2];
+        await this.handleScoreChange(selectedScore);
+      } else {
+        await this.handleNearbyChange("nearby");
+      }
+
+      await Promise.all([
+        new Promise((resolve) => {
+          navigator.geolocation.getCurrentPosition(
+            (position) => {
+              const userLocation = {
+                latitude: position.coords.latitude,
+                longitude: position.coords.longitude,
+              };
+              this.setState({ userLocation }, () => {
+                if (shouldReloadData) {
+                  this.loadPageData(false);
+                }
+              });
+              resolve();
+            },
+            (error) => {
+              console.error("Error getting user location:", error);
+              resolve();
+            }
+          );
+        }),
+        this.fetchBrandData(),
+      ]);
+
+      const userData = JSON.parse(localStorage.getItem("userdata"));
+      if (userData) {
+        const response = await axios.get(
+          `http://localhost:8000/user/${userData.user_id}`
+        );
+        const userImg = response.data.user_img
+          ? response.data.user_img
+          : "LeDian.png";
+        this.setState({ userImg, userData });
+      }
+    } catch (error) {
+      console.error("Error in loadPageData:", error);
+    }
+  };
 
   fetchBrandData = async () => {
     try {
       var brand = await axios.get("http://localhost:8000/all/brand");
+      var businessHours = await axios.get("http://localhost:8000/dian/address");
 
       this.setState({
         brand: brand.data,
+        branchList: businessHours.data,
       });
-      console.log(this.state);
+      // console.log(this.state);
     } catch (error) {
       console.error(error);
     }
@@ -78,27 +128,41 @@ class dian extends Component {
       }
 
       const response = await axios.get(url);
-      const contentWithDistance = response.data
-        .map((item) => {
+
+      const validData = response.data.filter(
+        (item) => item && item.branch_latitude && item.branch_longitude
+      );
+
+      const contentWithDistance = await Promise.all(
+        validData.map(async (item) => {
+          if (!item.branch_latitude || !item.branch_longitude) {
+            console.log("Item is missing latitude/longitude properties:", item);
+            return null;
+          }
+
           const distance = this.calculateDistance(
-            this.state.userLocation.latitude,
-            this.state.userLocation.longitude,
+            this.state.userLocation?.latitude,
+            this.state.userLocation?.longitude,
             item.branch_latitude,
             item.branch_longitude
           );
 
-          // 只有當距離小於1.5公里時才將該地點添加到狀態中
-          if (parseFloat(distance) < 1.5) {
+          if (parseFloat(distance) <= 1.5) {
             return {
               ...item,
               distance: distance,
             };
+          } else {
+            return null;
           }
-          return null; // 如果距離大於等於1.5公里，則返回 null
         })
-        .filter((item) => item !== null); // 去除距離大於等於1.5公里的地點
+      );
 
-      this.setState({ selectedNearby, content: contentWithDistance });
+      const filteredContent = contentWithDistance.filter(
+        (item) => item !== null
+      );
+
+      this.setState({ selectedNearby, content: filteredContent });
     } catch (error) {
       console.error("Error fetching data:", error);
     }
@@ -216,7 +280,7 @@ class dian extends Component {
         } else {
           return {
             ...item,
-            distance: "N/A", // 如果 userLocation 為 null，則設置距離為 N/A
+            distance: "N/A",
           };
         }
       });
@@ -228,7 +292,8 @@ class dian extends Component {
 
   render() {
     const { selectedOption, content, selectedNearby } = this.state;
-    const shuffledContent = content.sort(() => Math.random() - 0.5);
+    const sortedContent = content.sort((a, b) => a.distance - b.distance);
+    // let distance = "";
 
     return (
       <React.Fragment>
@@ -256,9 +321,16 @@ class dian extends Component {
                 window.location = "/index";
               }}
             >
-              <img id="logo" src="/img/index/LeDian_LOGO-05.png"></img>
+              <img
+                id="logo"
+                src="/img/index/LeDian_LOGO-05.png"
+                alt="logo"
+              ></img>
             </h4>
-            <h4 className="my-auto p-0 btn headerText menuBtn d-flex align-items-center justify-content-center">
+            <h4
+              className="my-auto p-0 btn headerText menuBtn d-flex align-items-center justify-content-center"
+              onClick={this.cartMenuClick}
+            >
               <HiOutlineShoppingBag className="fs-4" />
               購物車
             </h4>
@@ -291,30 +363,47 @@ class dian extends Component {
             <p>．本集點活動以公告為準，如有更改，恕不另行通知。</p>
           </div>
 
-          <div className="d-flex me-2  align-items-center">
-            <h4
-              id="loginBtn"
-              className="my-auto btn headerText"
-              onClick={this.toggleMemberNav}
-            >
-              登入/註冊▼
-            </h4>
+          <div className="d-flex me-2 align-items-center">
+            {this.state.userData ? (
+              <h4
+                id="loginBtn"
+                className="my-auto btn headerText text-nowrap"
+                onClick={this.toggleMemberNav}
+              >
+                <img
+                  id="memberHeadshot"
+                  src={`/img/users/${this.state.userImg}`}
+                  alt="memberHeadshot"
+                  className="img-fluid my-auto mx-1 rounded-circle border"
+                />
+                會員專區▼
+              </h4>
+            ) : (
+              <h4
+                id="loginBtn"
+                className="my-auto btn headerText align-self-center"
+                onClick={this.toggleMemberNav}
+              >
+                登入/註冊
+              </h4>
+            )}
             <div id="memberNav" className="collapse">
-              <img
-                id="memberNavImg"
-                src={"/img/index/LeDian_LOGO-05.png"}
-                alt="logo"
-              ></img>
-              <div>
-                <h4 className="headerText text-center my-3">個人檔案</h4>
+              <div className="p-2">
+                <h4
+                  className="headerText text-center my-2"
+                  onClick={() => {
+                    window.location = "/profile";
+                  }}
+                >
+                  會員中心
+                </h4>
                 <hr />
-                <h4 className="headerText text-center my-3">帳號管理</h4>
-                <hr />
-                <h4 className="headerText text-center my-3">歷史訂單</h4>
-                <hr />
-                <h4 className="headerText text-center my-3">載具存取</h4>
-                <hr />
-                <h4 className="headerText text-center my-3">登出</h4>
+                <h4
+                  className="headerText text-center my-2"
+                  onClick={this.logoutClick}
+                >
+                  登出
+                </h4>
               </div>
             </div>
           </div>
@@ -323,7 +412,10 @@ class dian extends Component {
           id="menuNav"
           className="menuNav d-flex flex-column align-items-center"
         >
-          <h4 className="menuText my-3 mainColor border-bottom border-secondary">
+          <h4
+            className="menuText my-3 mainColor border-bottom border-secondary"
+            onClick={this.cartMenuClick}
+          >
             <HiOutlineShoppingBag className="fs-4" />
             購物車
           </h4>
@@ -402,9 +494,9 @@ class dian extends Component {
                   <div className="choose_left_1">透過以下分類篩選</div>
                   <div className="choose_classification_1">
                     <div className="classification_title">快速篩選</div>
-                    <div className="form-check">
+                    <div className="form-check dian">
                       <input
-                        className="form-check-input"
+                        className="form-check-input dian_radio"
                         type="radio"
                         value=""
                         id="classification_1"
@@ -418,9 +510,9 @@ class dian extends Component {
                         附近店家
                       </label>
                     </div>
-                    <div className="form-check">
+                    <div className="form-check dian">
                       <input
-                        className="form-check-input"
+                        className="form-check-input dian_radio"
                         type="radio"
                         value=""
                         id="classification_2"
@@ -438,9 +530,9 @@ class dian extends Component {
                   <div className="choose_classification_2">
                     <div className="classification_title">台中探索</div>
                     <div className="addressall">
-                      <div className="form-check">
+                      <div className="form-check dian">
                         <input
-                          className="form-check-input"
+                          className="form-check-input dian_radio"
                           type="radio"
                           name="address"
                           id="address_1"
@@ -454,9 +546,9 @@ class dian extends Component {
                           中區{" "}
                         </label>
                       </div>
-                      <div className="form-check">
+                      <div className="form-check dian">
                         <input
-                          className="form-check-input"
+                          className="form-check-input dian_radio"
                           type="radio"
                           name="address"
                           id="address_2"
@@ -469,9 +561,9 @@ class dian extends Component {
                           東區{" "}
                         </label>
                       </div>
-                      <div className="form-check">
+                      <div className="form-check dian">
                         <input
-                          className="form-check-input"
+                          className="form-check-input dian_radio"
                           type="radio"
                           name="address"
                           id="address_3"
@@ -484,9 +576,9 @@ class dian extends Component {
                           南區{" "}
                         </label>
                       </div>
-                      <div className="form-check">
+                      <div className="form-check dian">
                         <input
-                          className="form-check-input"
+                          className="form-check-input dian_radio"
                           type="radio"
                           name="address"
                           id="address_4"
@@ -499,9 +591,9 @@ class dian extends Component {
                           西區{" "}
                         </label>
                       </div>
-                      <div className="form-check">
+                      <div className="form-check dian">
                         <input
-                          className="form-check-input"
+                          className="form-check-input dian_radio"
                           type="radio"
                           name="address"
                           id="address_5"
@@ -514,9 +606,9 @@ class dian extends Component {
                           北區{" "}
                         </label>
                       </div>
-                      <div className="form-check">
+                      <div className="form-check dian">
                         <input
-                          className="form-check-input"
+                          className="form-check-input dian_radio"
                           type="radio"
                           name="address"
                           id="address_6"
@@ -529,9 +621,9 @@ class dian extends Component {
                           北屯區{" "}
                         </label>
                       </div>
-                      <div className="form-check">
+                      <div className="form-check dian">
                         <input
-                          className="form-check-input"
+                          className="form-check-input dian_radio"
                           type="radio"
                           name="address"
                           id="address_7"
@@ -544,9 +636,9 @@ class dian extends Component {
                           西屯區{" "}
                         </label>
                       </div>
-                      <div className="form-check">
+                      <div className="form-check dian">
                         <input
-                          className="form-check-input"
+                          className="form-check-input dian_radio"
                           type="radio"
                           name="address"
                           id="address_8"
@@ -559,9 +651,9 @@ class dian extends Component {
                           南屯區{" "}
                         </label>
                       </div>
-                      <div className="form-check">
+                      <div className="form-check dian">
                         <input
-                          className="form-check-input"
+                          className="form-check-input dian_radio"
                           type="radio"
                           name="address"
                           id="address_9"
@@ -574,9 +666,9 @@ class dian extends Component {
                           太平區{" "}
                         </label>
                       </div>
-                      <div className="form-check">
+                      <div className="form-check dian">
                         <input
-                          className="form-check-input"
+                          className="form-check-input dian_radio"
                           type="radio"
                           name="address"
                           id="address_10"
@@ -592,9 +684,9 @@ class dian extends Component {
                           大里區{" "}
                         </label>
                       </div>
-                      <div className="form-check">
+                      <div className="form-check dian">
                         <input
-                          className="form-check-input"
+                          className="form-check-input dian_radio"
                           type="radio"
                           name="address"
                           id="address_11"
@@ -610,9 +702,9 @@ class dian extends Component {
                           霧峰區{" "}
                         </label>
                       </div>
-                      <div className="form-check">
+                      <div className="form-check dian">
                         <input
-                          className="form-check-input"
+                          className="form-check-input dian_radio"
                           type="radio"
                           name="address"
                           id="address_12"
@@ -628,9 +720,9 @@ class dian extends Component {
                           烏日區{" "}
                         </label>
                       </div>
-                      <div className="form-check">
+                      <div className="form-check dian">
                         <input
-                          className="form-check-input"
+                          className="form-check-input dian_radio"
                           type="radio"
                           name="address"
                           id="address_13"
@@ -646,9 +738,9 @@ class dian extends Component {
                           豐原區{" "}
                         </label>
                       </div>
-                      <div className="form-check">
+                      <div className="form-check dian">
                         <input
-                          className="form-check-input"
+                          className="form-check-input dian_radio"
                           type="radio"
                           name="address"
                           id="address_14"
@@ -664,9 +756,9 @@ class dian extends Component {
                           后里區{" "}
                         </label>
                       </div>
-                      <div className="form-check">
+                      <div className="form-check dian">
                         <input
-                          className="form-check-input"
+                          className="form-check-input dian_radio"
                           type="radio"
                           name="address"
                           id="address_15"
@@ -682,9 +774,9 @@ class dian extends Component {
                           石岡區{" "}
                         </label>
                       </div>
-                      <div className="form-check">
+                      <div className="form-check dian">
                         <input
-                          className="form-check-input"
+                          className="form-check-input dian_radio"
                           type="radio"
                           name="address"
                           id="address_16"
@@ -700,9 +792,9 @@ class dian extends Component {
                           東勢區{" "}
                         </label>
                       </div>
-                      <div className="form-check">
+                      <div className="form-check dian">
                         <input
-                          className="form-check-input"
+                          className="form-check-input dian_radio"
                           type="radio"
                           name="address"
                           id="address_17"
@@ -718,9 +810,9 @@ class dian extends Component {
                           新社區{" "}
                         </label>
                       </div>
-                      <div className="form-check">
+                      <div className="form-check dian">
                         <input
-                          className="form-check-input"
+                          className="form-check-input dian_radio"
                           type="radio"
                           name="address"
                           id="address_18"
@@ -736,9 +828,9 @@ class dian extends Component {
                           潭子區{" "}
                         </label>
                       </div>
-                      <div className="form-check">
+                      <div className="form-check dian">
                         <input
-                          className="form-check-input"
+                          className="form-check-input dian_radio"
                           type="radio"
                           name="address"
                           id="address_19"
@@ -754,9 +846,9 @@ class dian extends Component {
                           大雅區{" "}
                         </label>
                       </div>
-                      <div className="form-check">
+                      <div className="form-check dian">
                         <input
-                          className="form-check-input"
+                          className="form-check-input dian_radio"
                           type="radio"
                           name="address"
                           id="address_20"
@@ -772,9 +864,9 @@ class dian extends Component {
                           神岡區{" "}
                         </label>
                       </div>
-                      <div className="form-check">
+                      <div className="form-check dian">
                         <input
-                          className="form-check-input"
+                          className="form-check-input dian_radio"
                           type="radio"
                           name="address"
                           id="address_21"
@@ -790,9 +882,9 @@ class dian extends Component {
                           大肚區{" "}
                         </label>
                       </div>
-                      <div className="form-check">
+                      <div className="form-check dian">
                         <input
-                          className="form-check-input"
+                          className="form-check-input dian_radio"
                           type="radio"
                           name="address"
                           id="address_22"
@@ -808,9 +900,9 @@ class dian extends Component {
                           沙鹿區{" "}
                         </label>
                       </div>
-                      <div className="form-check">
+                      <div className="form-check dian">
                         <input
-                          className="form-check-input"
+                          className="form-check-input dian_radio"
                           type="radio"
                           name="address"
                           id="address_23"
@@ -826,9 +918,9 @@ class dian extends Component {
                           龍井區{" "}
                         </label>
                       </div>
-                      <div className="form-check">
+                      <div className="form-check dian">
                         <input
-                          className="form-check-input"
+                          className="form-check-input dian_radio"
                           type="radio"
                           name="address"
                           id="address_24"
@@ -844,9 +936,9 @@ class dian extends Component {
                           梧棲區{" "}
                         </label>
                       </div>
-                      <div className="form-check">
+                      <div className="form-check dian">
                         <input
-                          className="form-check-input"
+                          className="form-check-input dian_radio"
                           type="radio"
                           name="address"
                           id="address_25"
@@ -862,9 +954,9 @@ class dian extends Component {
                           清水區{" "}
                         </label>
                       </div>
-                      <div className="form-check">
+                      <div className="form-check dian">
                         <input
-                          className="form-check-input"
+                          className="form-check-input dian_radio"
                           type="radio"
                           name="address"
                           id="address_26"
@@ -880,9 +972,9 @@ class dian extends Component {
                           大甲區{" "}
                         </label>
                       </div>
-                      <div className="form-check">
+                      <div className="form-check dian">
                         <input
-                          className="form-check-input"
+                          className="form-check-input dian_radio"
                           type="radio"
                           name="address"
                           id="address_27"
@@ -902,9 +994,9 @@ class dian extends Component {
                   </div>
                   <div className="choose_classification_3">
                     <div className="classification_title">尋星饗宴</div>
-                    <div className="form-check">
+                    <div className="form-check dian">
                       <input
-                        className="form-check-input"
+                        className="form-check-input dian_radio"
                         type="radio"
                         name="score"
                         id="score_1"
@@ -915,9 +1007,9 @@ class dian extends Component {
                         <GradeIcon className="me-1 iconColor" /> 4.5以上
                       </label>
                     </div>
-                    <div className="form-check">
+                    <div className="form-check dian">
                       <input
-                        className="form-check-input"
+                        className="form-check-input dian_radio"
                         type="radio"
                         name="score"
                         id="score_2"
@@ -928,9 +1020,9 @@ class dian extends Component {
                         <GradeIcon className="me-1 iconColor" /> 4.0以上
                       </label>
                     </div>
-                    <div className="form-check">
+                    <div className="form-check dian">
                       <input
-                        className="form-check-input"
+                        className="form-check-input dian_radio"
                         type="radio"
                         name="score"
                         id="score_2"
@@ -941,9 +1033,9 @@ class dian extends Component {
                         <GradeIcon className="me-1 iconColor" /> 3.5以上
                       </label>
                     </div>
-                    <div className="form-check">
+                    <div className="form-check dian">
                       <input
-                        className="form-check-input"
+                        className="form-check-input dian_radio"
                         type="radio"
                         name="score"
                         id="score_2"
@@ -959,7 +1051,19 @@ class dian extends Component {
               </div>
               <div className="col-sm-7 col-md-8 col-lg-9 col-xxl-10 row choose_right justify-content-center mx-auto">
                 {/* 台中探索、尋星饗宴、星評優選 */}
-                {shuffledContent.map((item, index) => {
+                {sortedContent.map((item, index) => {
+                  if (
+                    !item ||
+                    !item.branch_latitude ||
+                    !item.branch_longitude
+                  ) {
+                    console.log(
+                      "Item is null or missing latitude/longitude properties:",
+                      item
+                    );
+                    return null;
+                  }
+
                   let distance = "";
 
                   if (this.state.userLocation) {
@@ -974,7 +1078,13 @@ class dian extends Component {
                   }
 
                   return (
-                    <div key={index} className="col-lg-6 col-xxl-4 my-3">
+                    <div
+                      key={index}
+                      className="col-lg-6 col-xxl-4 my-3"
+                      onClick={() => {
+                        window.location = `/order/${item.branch_id}`;
+                      }}
+                    >
                       <div className="card">
                         <div className="image">
                           <img
@@ -994,21 +1104,56 @@ class dian extends Component {
                               <GradeIcon className="me-1 iconColor" />
                               {item.branch_score.toFixed(1)}
                             </p>
-                            <p className="col-5 time">10:00~23:00</p>
+                            <p className="col-5 time">
+                              {this.state.branchList.map((branch) => {
+                                if (branch.branch_id === item.brand_id) {
+                                  const day = new Date().getDay();
+                                  const openTime = [
+                                    branch.Sun_start,
+                                    branch.Mon_start,
+                                    branch.Tue_start,
+                                    branch.Wed_start,
+                                    branch.Thu_start,
+                                    branch.Fri_start,
+                                    branch.Sat_start,
+                                  ];
+                                  const closeTime = [
+                                    branch.Sun_end,
+                                    branch.Mon_end,
+                                    branch.Tue_end,
+                                    branch.Wed_end,
+                                    branch.Thu_end,
+                                    branch.Fri_end,
+                                    branch.Sat_end,
+                                  ];
+                                  if (
+                                    openTime[day] == "店休" ||
+                                    closeTime[day] == "店休"
+                                  ) {
+                                    return "店休";
+                                  } else {
+                                    return `${openTime[day]}~${closeTime[day]}`;
+                                  }
+                                } else {
+                                  return null;
+                                }
+                              })}
+                            </p>
                             <p className="col-4 kilometre">
                               約 {item.distance} 公里
                             </p>
                           </div>
                           <p className="card-title lh-sm">
-                            {this.state.brand
-                              .filter(
-                                (brand) => brand.brand_id === item.brand_id
-                              ) // 過濾出符合 brand_id 的品牌
-                              .map((brand) => (
-                                <span key={brand.brand_id}>
-                                  {brand.brand_name}
-                                </span>
-                              ))}{" "}
+                            {this.state.brand &&
+                              this.state.brand
+                                .filter(
+                                  (brand) => brand.brand_id === item.brand_id
+                                )
+                                .map((brand) => (
+                                  <span key={brand.brand_id}>
+                                    {brand.brand_name}
+                                  </span>
+                                ))}{" "}
                             {item.branch_name}
                             <br />
                             <a
@@ -1068,7 +1213,7 @@ class dian extends Component {
           </div>
           <div
             id="footerInfo"
-            className="col-3 d-flex row align-items-center justify-content-center pe-1"
+            className="col-3 d-flex row align-items-center justify-content-center"
           >
             <div className="col-3 col-sm-6 d-flex flex-column align-items-center">
               <p className="footerText m-0 py-1 text-nowrap text-white">
@@ -1091,14 +1236,13 @@ class dian extends Component {
             </div>
           </div>
         </div>
+
+        <button className="topbtn" id="topbtn" onClick={this.scrollToTop}>
+          <FaArrowCircleUp className="text-white" />
+        </button>
       </React.Fragment>
     );
   }
-  searchChange = (e) => {
-    var newState = { ...this.state };
-    newState.search = e.target.value;
-    this.setState(newState);
-  };
   pointinfoShow = (event) => {
     document.getElementById("pointinfo").style.top = event.clientY + 50 + "px";
     document.getElementById("pointinfo").style.left =
@@ -1111,11 +1255,47 @@ class dian extends Component {
   };
 
   toggleMemberNav = () => {
-    document.getElementById("memberNav").classList.toggle("collapse");
+    const userdata = localStorage.getItem("userdata");
+    if (userdata) {
+      document.getElementById("memberNav").classList.toggle("collapse");
+    } else {
+      const path = this.props.location.pathname;
+      sessionStorage.setItem("redirect", path);
+      window.location = "/login";
+    }
   };
-
   toggleMenuNav = () => {
     document.getElementById("menuNav").classList.toggle("menuNav");
+  };
+  logoutClick = async () => {
+    localStorage.removeItem("userdata");
+    const userdata = localStorage.getItem("userdata");
+    console.log("現在的:", userdata);
+    try {
+      await axios.post("http://localhost:8000/logout");
+    } catch (error) {
+      console.error("登出時出錯:", error);
+    }
+
+    document.getElementById("memberNav").classList.add("collapse");
+    this.setState({});
+    window.location = "/index";
+  };
+  cartMenuClick = () => {
+    const userData = JSON.parse(localStorage.getItem("userdata"));
+    if (userData) {
+      const userId = userData.user_id;
+      window.location = `/cartlist/${userId}`;
+    } else {
+      window.location = "/login";
+    }
+  };
+
+  scrollToTop = () => {
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
   };
 }
 

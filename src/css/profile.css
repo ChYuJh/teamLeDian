@@ -9,9 +9,9 @@
   background-color: #eee;
   font-family: FakePearl-Regular, sans-serif;
 }
-
 #userimg {
-  width: 120%;
+  width: 100px;
+  height: 70px;
 }
 
 .tab-content {
@@ -23,22 +23,51 @@
   width: 20%;
 }
 
-.nav-link {
+#leftnav .nav-link {
   border-left: 5px solid transparent;
   padding-left: 15px;
   color: #000;
   font-weight: bold;
 }
-.nav-link:hover {
+#leftnav .nav-link:hover {
   color: #000;
 }
 
-.nav-link.active,
-.nav-link:focus,
-.nav-link:active {
+#leftnav .nav-link.active,
+#leftnav .nav-link:focus,
+#leftnav .nav-link:active {
   border-left-color: #003c96;
   color: #000;
 }
+
+
+#col10nav.nav.fs-5 {
+  justify-content: center; 
+  list-style-type: none;
+  padding: 0;
+  color: #000;
+  font-weight: bold;
+}
+
+#col10nav.nav.fs-5 .nav-item {
+  display: flex; 
+}
+
+#col10nav.nav.fs-5 .nav-link {
+  text-decoration: none;
+  color: black;
+  text-align: center; 
+}
+
+#col10nav.nav.fs-5 .nav-link.active {
+  border-bottom: 5px solid #003c96; 
+}
+
+#col10nav.nav.fs-5 .nav-link:not(.active) {
+  border-bottom: none;
+}
+
+
 
 @media (max-width: 1100px) {
   #leftnav {
@@ -46,7 +75,7 @@
   }
   #userimg {
     width: 150%;
-    margin-top: 8px;
+    margin-top: 8px !important
   }
   .username {
     font-size: 14px;
@@ -60,9 +89,9 @@
   }
 
 }
-@media (max-width: 930px) {
+@media (max-width: 1050px) {
   .profilecol2 {
-    display: none;
+    display: none !important
   }
 
   .profilecol10 {
@@ -107,12 +136,12 @@
   border-radius: 100px;
   background-color: #f3b021;
   padding: 10px;
-  text-align: center; /* 文字水平置中 */
+  text-align: center; 
   cursor: pointer;
   padding: 0.375rem 0.75rem;
-  margin: 0; /* 清除 margin 以保持水平置中 */
-  width: 70%; /* 保留原本的寬度 */
-  height: 60%; /* 保留原本的高度 */
+  margin: 0; 
+  width: 70%;
+  height: 60%;
   color: #fff;
   display: flex;
   align-items: center;
@@ -164,7 +193,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  line-height: 1; /* 垂直置中 */
+  line-height: 1;
   cursor: pointer;
 }
 
@@ -198,13 +227,14 @@
   border-color: #f3b021;
   color: #f3b021;
 }
-.profilecard {
+.card {
   border: #f3b021 1px solid;
 }
 #LeDianLogoModal {
-  width: 80%;
+  width: 70%;
   margin: 0 auto;
 }
+
 #pointbuttom {
   background-color: #f3b021;
   color: #fff;
@@ -232,17 +262,18 @@
   color: #ddd;
 }
 .rating-group:hover .rating_label .star {
-  color: orange;
+  color: orange
 }
 .rating_input:hover ~ .rating_label .star {
   color: #ddd;
 }
 textarea {
-  resize: none; /* 禁止调整大小 */
+  resize: none;
 }
 .sendOrder {
   background-color: #003c96;
   color: #fff;
+  
 }
 #Barcodecontent{
   width: 50%;
@@ -255,4 +286,21 @@ textarea {
 }
 #profileheader{
   background-color: #fff;
+}
+.profiledate .react-datepicker-wrapper{
+  width: 100%;
+
+}
+
+.completedOrder {
+  background-color: #f3b021;
+}
+
+#editbutton>img{
+  width: 25px;
+  height: 25px;
+}
+#deletebutton>img{
+  width: 25px;
+  height: 25px;
 }

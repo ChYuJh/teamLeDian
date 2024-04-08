@@ -4,6 +4,7 @@ import { HiOutlineShoppingBag } from "react-icons/hi";
 import { PiMedal } from "react-icons/pi";
 import { PiCoins } from "react-icons/pi";
 import { GiCancel } from "react-icons/gi";
+import { FaArrowCircleUp } from "react-icons/fa";
 import axios from "axios";
 
 class le extends Component {
@@ -20,6 +21,7 @@ class le extends Component {
       data: [],
       filteredData: [],
       brand: [],
+      userImg: null,
     };
   }
 
@@ -33,8 +35,8 @@ class le extends Component {
         .then((response) => response.data),
     ])
       .then(([productsData, brandData]) => {
-        console.log("Fetched products data:", productsData);
-        console.log("Fetched brand data:", brandData);
+        // console.log("Fetched products data:", productsData);
+        // console.log("Fetched brand data:", brandData);
         this.setState({ data: productsData, brand: brandData }, () => {
           this.filterData();
         });
@@ -42,6 +44,22 @@ class le extends Component {
       .catch((error) => {
         console.error("Error fetching data:", error);
       });
+
+    const userData = JSON.parse(localStorage.getItem("userdata"));
+
+    if (userData) {
+      axios
+        .get(`http://localhost:8000/user/${userData.user_id}`)
+        .then((response) => {
+          const userImg = response.data.user_img
+            ? response.data.user_img
+            : "LeDian.png";
+          this.setState({ userImg, userData });
+        })
+        .catch((error) => {
+          console.error("Failed to fetch user data:", error);
+        });
+    }
   }
 
   handleFilterChange = (filter) => {
@@ -53,7 +71,7 @@ class le extends Component {
         },
       }),
       () => {
-        console.log("New Filters:", this.state.filters);
+        // console.log("New Filters:", this.state.filters);
         this.filterData();
       }
     );
@@ -61,8 +79,8 @@ class le extends Component {
 
   filterData() {
     const { data, filters } = this.state;
-    console.log("Filters:", filters);
-    console.log("Data:", data);
+    // console.log("Filters:", filters);
+    // console.log("Data:", data);
 
     const filterCondition = (item) => {
       return Object.keys(filters).every((filter) => {
@@ -80,10 +98,9 @@ class le extends Component {
       });
     };
 
-    // 使用 filterCondition 函數進行篩選
     const filteredData = data.filter(filterCondition);
 
-    console.log("Filtered Data:", filteredData);
+    // console.log("Filtered Data:", filteredData);
     this.setState({ filteredData });
 
     return filteredData;
@@ -124,9 +141,16 @@ class le extends Component {
                 window.location = "/index";
               }}
             >
-              <img id="logo" src="/img/index/LeDian_LOGO-05.png"></img>
+              <img
+                id="logo"
+                src="/img/index/LeDian_LOGO-05.png"
+                alt="logo"
+              ></img>
             </h4>
-            <h4 className="my-auto p-0 btn headerText menuBtn d-flex align-items-center justify-content-center">
+            <h4
+              className="my-auto p-0 btn headerText menuBtn d-flex align-items-center justify-content-center"
+              onClick={this.cartMenuClick}
+            >
               <HiOutlineShoppingBag className="fs-4" />
               購物車
             </h4>
@@ -159,30 +183,47 @@ class le extends Component {
             <p>．本集點活動以公告為準，如有更改，恕不另行通知。</p>
           </div>
 
-          <div className="d-flex me-2  align-items-center">
-            <h4
-              id="loginBtn"
-              className="my-auto btn headerText"
-              onClick={this.toggleMemberNav}
-            >
-              登入/註冊▼
-            </h4>
+          <div className="d-flex me-2 align-items-center">
+            {this.state.userData ? (
+              <h4
+                id="loginBtn"
+                className="my-auto btn headerText text-nowrap"
+                onClick={this.toggleMemberNav}
+              >
+                <img
+                  id="memberHeadshot"
+                  src={`/img/users/${this.state.userImg}`}
+                  alt="memberHeadshot"
+                  className="img-fluid my-auto mx-1 rounded-circle border"
+                />
+                會員專區▼
+              </h4>
+            ) : (
+              <h4
+                id="loginBtn"
+                className="my-auto btn headerText align-self-center"
+                onClick={this.toggleMemberNav}
+              >
+                登入/註冊
+              </h4>
+            )}
             <div id="memberNav" className="collapse">
-              <img
-                id="memberNavImg"
-                src={"/img/index/LeDian_LOGO-05.png"}
-                alt="logo"
-              ></img>
-              <div>
-                <h4 className="headerText text-center my-3">個人檔案</h4>
+              <div className="p-2">
+                <h4
+                  className="headerText text-center my-2"
+                  onClick={() => {
+                    window.location = "/profile";
+                  }}
+                >
+                  會員中心
+                </h4>
                 <hr />
-                <h4 className="headerText text-center my-3">帳號管理</h4>
-                <hr />
-                <h4 className="headerText text-center my-3">歷史訂單</h4>
-                <hr />
-                <h4 className="headerText text-center my-3">載具存取</h4>
-                <hr />
-                <h4 className="headerText text-center my-3">登出</h4>
+                <h4
+                  className="headerText text-center my-2"
+                  onClick={this.logoutClick}
+                >
+                  登出
+                </h4>
               </div>
             </div>
           </div>
@@ -191,7 +232,10 @@ class le extends Component {
           id="menuNav"
           className="menuNav d-flex flex-column align-items-center"
         >
-          <h4 className="menuText my-3 mainColor border-bottom border-secondary">
+          <h4
+            className="menuText my-3 mainColor border-bottom border-secondary"
+            onClick={this.cartMenuClick}
+          >
             <HiOutlineShoppingBag className="fs-4" />
             購物車
           </h4>
@@ -269,9 +313,9 @@ class le extends Component {
                 <div className="choose_left">
                   <div className="choose_left_1">透過以下分類篩選</div>
                   <div className="choose_classification">
-                    <div className="form-check">
+                    <div className="form-check le">
                       <input
-                        className="form-check-input"
+                        className="form-check-input le_checkbox"
                         type="checkbox"
                         id="classification_1"
                         checked={filters.classification_1}
@@ -286,9 +330,9 @@ class le extends Component {
                         精選推味
                       </label>
                     </div>
-                    <div className="form-check">
+                    <div className="form-check le">
                       <input
-                        className="form-check-input"
+                        className="form-check-input le_checkbox"
                         type="checkbox"
                         value=""
                         id="classification_2"
@@ -304,9 +348,9 @@ class le extends Component {
                         茶品精選
                       </label>
                     </div>
-                    <div className="form-check">
+                    <div className="form-check le">
                       <input
-                        className="form-check-input"
+                        className="form-check-input le_checkbox"
                         type="checkbox"
                         value=""
                         id="classification_3"
@@ -322,9 +366,9 @@ class le extends Component {
                         拿鐵探查
                       </label>
                     </div>
-                    <div className="form-check">
+                    <div className="form-check le">
                       <input
-                        className="form-check-input"
+                        className="form-check-input le_checkbox"
                         type="checkbox"
                         value=""
                         id="classification_4"
@@ -340,9 +384,9 @@ class le extends Component {
                         口感尋覓
                       </label>
                     </div>
-                    <div className="form-check">
+                    <div className="form-check le">
                       <input
-                        className="form-check-input"
+                        className="form-check-input le_checkbox"
                         type="checkbox"
                         value=""
                         id="classification_5"
@@ -362,8 +406,14 @@ class le extends Component {
                 </div>
               </div>
               <div className="col-sm-7 col-md-8 col-lg-9 col-xxl-10 row choose_right mx-auto">
-                {shuffledData.map((item) => (
-                  <div key={item.id} className="col-lg-6 col-xxl-4 my-3">
+                {shuffledData.map((item, i) => (
+                  <div
+                    key={i}
+                    className="col-lg-6 col-xxl-4 my-3"
+                    onClick={() => {
+                      window.location = `/branch/${item.brand_id}`;
+                    }}
+                  >
                     <div className="card">
                       <div className="image">
                         {/* 動態設定圖片路徑 */}
@@ -372,7 +422,7 @@ class le extends Component {
                           className="card-img-top"
                           alt="..."
                         />{" "}
-                        {console.log(item)}
+                        {/* {console.log(item)} */}
                         {/* 動態設定 logo 路徑 */}
                         <img
                           src={`/img/logo/${item.brand_id}.png`}
@@ -449,7 +499,7 @@ class le extends Component {
           </div>
           <div
             id="footerInfo"
-            className="col-3 d-flex row align-items-center justify-content-center pe-1"
+            className="col-3 d-flex row align-items-center justify-content-center"
           >
             <div className="col-3 col-sm-6 d-flex flex-column align-items-center">
               <p className="footerText m-0 py-1 text-nowrap text-white">
@@ -472,6 +522,10 @@ class le extends Component {
             </div>
           </div>
         </div>
+
+        <button className="topbtn" id="topbtn" onClick={this.scrollToTop}>
+          <FaArrowCircleUp className="text-white" />
+        </button>
       </React.Fragment>
     );
   }
@@ -488,10 +542,47 @@ class le extends Component {
   };
 
   toggleMemberNav = () => {
-    document.getElementById("memberNav").classList.toggle("collapse");
+    const userdata = localStorage.getItem("userdata");
+    if (userdata) {
+      document.getElementById("memberNav").classList.toggle("collapse");
+    } else {
+      const path = this.props.location.pathname;
+      sessionStorage.setItem("redirect", path);
+      window.location = "/login";
+    }
   };
   toggleMenuNav = () => {
     document.getElementById("menuNav").classList.toggle("menuNav");
+  };
+  logoutClick = async () => {
+    localStorage.removeItem("userdata");
+    const userdata = localStorage.getItem("userdata");
+    console.log("現在的:", userdata);
+    try {
+      await axios.post("http://localhost:8000/logout");
+    } catch (error) {
+      console.error("登出時出錯:", error);
+    }
+
+    document.getElementById("memberNav").classList.add("collapse");
+    this.setState({});
+    window.location = "/index";
+  };
+  cartMenuClick = () => {
+    const userData = JSON.parse(localStorage.getItem("userdata"));
+    if (userData) {
+      const userId = userData.user_id;
+      window.location = `/cartlist/${userId}`;
+    } else {
+      window.location = "/login";
+    }
+  };
+
+  scrollToTop = () => {
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
   };
 }
 

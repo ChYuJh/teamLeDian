@@ -55,10 +55,32 @@ class DateTimePicker extends Component {
           (date.getHours() === new Date().getHours() &&
             date.getMinutes() < new Date().getMinutes())
         ) {
-          newState.selectedDate.setHours(new Date().getHours());
+          newState.selectedDate.setHours(
+            new Date().getHours() < newState.openTime_hour
+              ? newState.openTime_hour
+              : new Date().getHours()
+          );
           newState.selectedDate.setMinutes(new Date().getMinutes() + 10);
           console.log(newState);
           this.setState(newState);
+        }
+
+        let year = new Date().getFullYear();
+        let month = new Date().getMonth();
+        let day = new Date().getDate() + 1;
+        //選擇時間超過營業時間預設隔天的營業時間
+        if (
+          date.getHours() >= newState.closeTime_hour &&
+          date.getMinutes() >= newState.closeTime_minutes
+        ) {
+          newState.selectedDate = new Date(
+            year,
+            month,
+            day,
+            newState.openTime_hour,
+            newState.openTime_minutes
+          );
+          console.log(newState.selectedDate);
         }
       }
 
